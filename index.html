@@ -2,21 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Premium</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"/>
   <style>
+    :root {
+      --bg-color: #121212;
+      --text-color: white;
+      --header-bg: #1e1e1e;
+      --tile-bg: #1e1e1e;
+    }
+    [data-theme="light"] {
+      --bg-color: #f9f9f9;
+      --text-color: #121212;
+      --header-bg: #eeeeee;
+      --tile-bg: #ffffff;
+    }
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: white;
+      background-color: var(--bg-color);
+      color: var(--text-color);
     }
     header {
-      background-color: #1e1e1e;
+      background-color: var(--header-bg);
       padding: 10px 20px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
     }
     header img {
       height: 40px;
@@ -26,58 +39,72 @@
       margin: 0;
       font-size: 1.5em;
     }
+    #nowPlaying {
+      background-color: #222;
+      text-align: center;
+      padding: 10px;
+      font-weight: bold;
+    }
     #player {
       width: 100%;
       height: 300px;
       background: black;
     }
-    .now-playing {
-      background: #222;
-      padding: 10px 20px;
-      font-size: 0.9em;
-      border-top: 1px solid #333;
-    }
     .controls {
       padding: 10px 20px;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
     input, select, button {
-      padding: 5px;
+      padding: 6px;
       font-size: 1em;
     }
+    .channel-list-wrapper {
+      overflow-x: auto;
+      white-space: nowrap;
+      padding: 10px 0;
+    }
     .channel-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      display: inline-flex;
       gap: 10px;
       padding: 10px 20px;
     }
     .channel {
-      background-color: #1e1e1e;
-      padding: 5px;
+      background-color: var(--tile-bg);
+      padding: 8px;
       border-radius: 8px;
       cursor: pointer;
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 120px;
+      flex-shrink: 0;
     }
     .channel img {
-      width: 80px;
-      height: 80px;
+      width: 60px;
+      height: 60px;
       object-fit: contain;
-      margin-bottom: 5px;
     }
     .channel-name {
-      font-size: 0.8em;
+      margin-top: 5px;
+      font-size: 0.85em;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="logo.png" alt="Logo">
-    <h1>IPTV Premium</h1>
+    <div style="display: flex; align-items: center;">
+      <img src="logo.png" alt="Logo">
+      <h1>IPTV Premium</h1>
+    </div>
+    <button onclick="toggleTheme()">🌓 Theme</button>
   </header>
 
+  <div id="nowPlaying">Now Playing: None</div>
+
   <video id="player" controls autoplay muted playsinline></video>
-  <div class="now-playing" id="nowPlaying">Now Playing: N/A</div>
 
   <div class="controls">
     <input type="text" id="search" placeholder="Search channels...">
@@ -87,43 +114,16 @@
     <button onclick="updatePlaylist()">Update Playlist</button>
   </div>
 
-  <div class="channel-list" id="channelList"></div>
+  <div class="channel-list-wrapper">
+    <div class="channel-list" id="channelList"></div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
   <script>
     let channels = [];
-    let epg = [];
     let currentUrl = "";
-
-    async function fetchEPG() {
-      try {
-        const response = await fetch("https://tinyurl.com/DrewLive002-epg");
-        const xml = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, "text/xml");
-        const programmes = doc.querySelectorAll("programme");
-        epg = Array.from(programmes).map(p => ({
-          channel: p.getAttribute("channel"),
-          start: new Date(p.getAttribute("start")),
-          stop: new Date(p.getAttribute("stop")),
-          title: p.querySelector("title")?.textContent || "",
-          desc: p.querySelector("desc")?.textContent || ""
-        }));
-      } catch (err) {
-        console.warn("Failed to load EPG", err);
-      }
-    }
-
-    function getNowNextEPG(channelName) {
-      const now = new Date();
-      const list = epg.filter(p => p.channel.includes(channelName));
-      const nowProg = list.find(p => now >= p.start && now < p.stop);
-      const nextProg = list.find(p => p.start > now);
-      return {
-        now: nowProg ? `${nowProg.title} (${nowProg.start.toLocaleTimeString()} - ${nowProg.stop.toLocaleTimeString()})` : "Now Playing: N/A",
-        next: nextProg ? `Next: ${nextProg.title} @ ${nextProg.start.toLocaleTimeString()}` : ""
-      };
-    }
+    let epgData = {};
+    let epgUrl = "https://tinyurl.com/DrewLive002-epg";
 
     function parseM3U(data) {
       const lines = data.split('\n');
@@ -146,6 +146,34 @@
         }
       }
       return result;
+    }
+
+    async function fetchEPG() {
+      try {
+        const res = await fetch(epgUrl);
+        const xml = await res.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xml, "text/xml");
+
+        const entries = xmlDoc.querySelectorAll("programme");
+        epgData = {};
+        entries.forEach(entry => {
+          const channel = entry.getAttribute("channel");
+          const title = entry.querySelector("title")?.textContent || "Unknown";
+          const start = entry.getAttribute("start");
+          const stop = entry.getAttribute("stop");
+          const now = new Date();
+
+          const startTime = new Date(start.substring(0, 14).replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1-$2-$3T$4:$5:$6"));
+          const stopTime = new Date(stop.substring(0, 14).replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1-$2-$3T$4:$5:$6"));
+
+          if (now >= startTime && now <= stopTime) {
+            epgData[channel] = title;
+          }
+        });
+      } catch (e) {
+        console.warn("Failed to fetch EPG:", e);
+      }
     }
 
     function loadChannels() {
@@ -171,7 +199,7 @@
           const el = document.createElement('div');
           el.className = 'channel';
           el.innerHTML = `
-            <img src="${ch.logo || 'https://via.placeholder.com/80'}" alt="Logo">
+            <img src="${ch.logo || 'https://via.placeholder.com/60'}" alt="Logo">
             <div class="channel-name">${ch.name}</div>
           `;
           el.onclick = () => playChannel(ch);
@@ -186,8 +214,9 @@
         player.load();
         currentUrl = channel.url;
       }
-      const epgData = getNowNextEPG(channel.tvgId || channel.name);
-      document.getElementById('nowPlaying').innerText = epgData.now + (epgData.next ? "\n" + epgData.next : "");
+
+      const epgTitle = epgData[channel.tvgId] || "No EPG Info";
+      document.getElementById("nowPlaying").textContent = `Now Playing: ${channel.name} - ${epgTitle}`;
 
       player.play().catch(err => {
         console.warn("Autoplay blocked:", err);
@@ -210,18 +239,26 @@
 
     function updatePlaylist() {
       toastr.info('Updating playlist...');
-      loadChannels();
       fetchEPG();
+      loadChannels();
     }
 
-    setInterval(updatePlaylist, 15 * 60 * 1000);
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute("data-theme") || "dark";
+      const next = current === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", next);
+    }
 
     document.getElementById('search').addEventListener('input', renderChannels);
     document.getElementById('category').addEventListener('change', renderChannels);
 
     window.onload = () => {
-      loadChannels();
       fetchEPG();
+      loadChannels();
+      setInterval(() => {
+        updatePlaylist();
+      }, 15 * 60 * 1000);
     };
   </script>
 </body>
