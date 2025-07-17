@@ -1,31 +1,241 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IPTV Premium</title>
-  <link href="style.css" rel="stylesheet" />
-  <link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPTV PREMIUM</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#141414" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="IPTV PREMIUM">
+  <link rel="apple-touch-icon" href="logo.png">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    :root {
+      --bg-color: #141414;
+      --text-color: #ffffff;
+      --card-bg: #222;
+      --highlight: #333;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-color: #f4f4f4;
+        --text-color: #000000;
+        --card-bg: #ffffff;
+        --highlight: #dddddd;
+      }
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    header {
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header img {
+      width: 50px;
+      height: 50px;
+    }
+
+    header h1 {
+      font-size: 22px;
+      margin: 0;
+    }
+
+    .video-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    video {
+      width: 100%;
+      height: auto;
+      background-color: #000;
+    }
+
+    .search-bar {
+      padding: 10px 20px;
+      background-color: var(--highlight);
+      display: flex;
+      justify-content: center;
+    }
+
+    .search-bar input {
+      width: 100%;
+      max-width: 600px;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .categories {
+      display: flex;
+      overflow-x: auto;
+      padding: 10px 20px;
+      gap: 10px;
+      background-color: var(--highlight);
+    }
+
+    .categories button {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .channel-list {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 20px;
+      gap: 15px;
+    }
+
+    .channel {
+      width: 180px;
+      background-color: var(--card-bg);
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .channel:hover {
+      transform: scale(1.05);
+    }
+
+    .channel img {
+      width: 100%;
+      border-radius: 4px;
+    }
+
+    .channel h3 {
+      font-size: 14px;
+      margin-top: 8px;
+    }
+  </style>
 </head>
-<body class="dark">
+<body>
   <header>
-    <img src="logo.png" alt="IPTV Premium Logo" class="logo" />
-    <h1>IPTV Premium</h1>
-    <button id="themeToggle">🌓</button>
+    <img src="logo.png" alt="IPTV PREMIUM Logo" />
+    <h1>IPTV PREMIUM</h1>
   </header>
 
-  <div class="player-container sticky">
-    <video id="videoPlayer" class="video-js vjs-default-skin" controls preload="auto" width="100%" height="auto"></video>
+  <div class="video-wrapper">
+    <video id="video" controls autoplay muted></video>
   </div>
 
-  <div class="controls">
-    <input type="text" id="searchInput" placeholder="Search channel..."/>
-    <select id="categoryList"></select>
-    <select id="channelList"></select>
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search channels..." oninput="searchChannels(this.value)">
   </div>
 
-  <script src="https://unpkg.com/video.js/dist/video.js"></script>
-  <script src="script.js"></script>
+  <div class="categories">
+    <button onclick="filterChannels('All')">All</button>
+    <button onclick="filterChannels('Sports')">Sports</button>
+    <button onclick="filterChannels('Movies')">Movies</button>
+    <button onclick="filterChannels('News')">News</button>
+  </div>
+
+  <div class="channel-list" id="channelList"></div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch(console.error);
+      });
+    }
+
+    async function fetchM3U() {
+      const response = await fetch('https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u');
+      const text = await response.text();
+      const lines = text.split('\n');
+
+      const channels = [];
+      let current = {};
+      lines.forEach(line => {
+        if (line.startsWith('#EXTINF')) {
+          const nameMatch = line.match(/,(.*)/);
+          current = {
+            name: nameMatch ? nameMatch[1] : 'Unknown',
+            category: 'All'
+          };
+        } else if (line.startsWith('http')) {
+          current.url = line.trim();
+          current.image = 'https://via.placeholder.com/180x100?text=' + encodeURIComponent(current.name);
+          channels.push(current);
+        }
+      });
+
+      return channels;
+    }
+
+    function loadChannel(url) {
+      const video = document.getElementById('video');
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(video);
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+      } else {
+        alert("Your browser doesn't support HLS");
+      }
+    }
+
+    function renderChannels(channels) {
+      const container = document.getElementById('channelList');
+      container.innerHTML = '';
+      channels.forEach(ch => {
+        const div = document.createElement('div');
+        div.className = 'channel';
+        div.innerHTML = `
+          <img src="${ch.image}" alt="${ch.name}" />
+          <h3>${ch.name}</h3>
+        `;
+        div.onclick = () => loadChannel(ch.url);
+        container.appendChild(div);
+      });
+    }
+
+    async function initApp() {
+      const channels = await fetchM3U();
+      window.allChannels = channels;
+      window.filteredChannels = channels;
+      renderChannels(channels);
+      if (channels.length > 0) {
+        loadChannel(channels[0].url);
+      }
+    }
+
+    function filterChannels(category) {
+      const filtered = category === 'All' ? window.allChannels : window.allChannels.filter(ch => ch.category === category);
+      window.filteredChannels = filtered;
+      renderChannels(filtered);
+    }
+
+    function searchChannels(term) {
+      const search = term.toLowerCase();
+      const results = window.filteredChannels.filter(ch => ch.name.toLowerCase().includes(search));
+      renderChannels(results);
+    }
+
+    initApp();
+  </script>
 </body>
 </html>
