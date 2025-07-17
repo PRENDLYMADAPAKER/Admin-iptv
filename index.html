@@ -28,12 +28,13 @@
     }
     #player {
       width: 100%;
-      height: 200px;
+      height: 500px;
       background: black;
     }
     .controls {
       padding: 10px 20px;
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
     }
     input, select, button {
@@ -78,6 +79,10 @@
     <select id="category">
       <option value="all">All Categories</option>
     </select>
+    <select id="playlistSelector">
+      <option value="UDPTV">UDPTV</option>
+      <option value="TheTVApp">TheTVApp</option>
+    </select>
     <button onclick="updatePlaylist()">Update Playlist</button>
   </div>
 
@@ -110,7 +115,16 @@
     }
 
     function loadChannels() {
-      fetch('https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/UDPTV.m3u?nocache=' + Date.now())
+      const selected = document.getElementById('playlistSelector').value;
+      let url = '';
+
+      if (selected === 'UDPTV') {
+        url = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/UDPTV.m3u';
+      } else if (selected === 'TheTVApp') {
+        url = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/TheTVApp.m3u';
+      }
+
+      fetch(url)
         .then(res => res.text())
         .then(data => {
           channels = parseM3U(data);
