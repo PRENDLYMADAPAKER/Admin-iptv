@@ -26,20 +26,14 @@
       margin: 0;
       font-size: 1.5em;
     }
-    #player-container {
-      position: sticky;
-      top: 0;
-      background: black;
-      z-index: 999;
-    }
     #player {
       width: 100%;
-      height: 250px;
+      height: 200px;
+      background: black;
     }
     .controls {
       padding: 10px 20px;
       display: flex;
-      flex-wrap: wrap;
       gap: 10px;
     }
     input, select, button {
@@ -60,10 +54,6 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      transition: background 0.2s;
-    }
-    .channel:hover {
-      background-color: #2e2e2e;
     }
     .channel img {
       width: 50px;
@@ -81,9 +71,7 @@
     <h1>IPTV Premium</h1>
   </header>
 
-  <div id="player-container">
-    <video id="player" controls autoplay></video>
-  </div>
+  <video id="player" controls autoplay muted playsinline></video>
 
   <div class="controls">
     <input type="text" id="search" placeholder="Search channels...">
@@ -100,11 +88,6 @@
     let channels = [];
     let currentUrl = "";
 
-    const sources = [
-      "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/TheTVApp.m3u",
-      "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/UDPTV.m3u"
-    ];
-
     function parseM3U(data) {
       const lines = data.split('\n');
       const result = [];
@@ -115,32 +98,27 @@
           const groupMatch = lines[i].match(/group-title="(.*?)"/);
           const url = lines[i + 1];
 
-          if (url && url.startsWith("http")) {
-            result.push({
-              name: titleMatch ? titleMatch[1] : 'Unknown',
-              logo: logoMatch ? logoMatch[1] : '',
-              group: groupMatch ? groupMatch[1] : 'Other',
-              url
-            });
-          }
+          result.push({
+            name: titleMatch ? titleMatch[1] : 'Unknown',
+            logo: logoMatch ? logoMatch[1] : '',
+            group: groupMatch ? groupMatch[1] : 'Other',
+            url
+          });
         }
       }
       return result;
     }
 
-    async function loadChannels() {
-      toastr.info('Loading playlist...');
-      try {
-        const allData = await Promise.all(
-          sources.map(src => fetch(src).then(r => r.text()))
-        );
-        channels = allData.flatMap(data => parseM3U(data));
-        renderChannels();
-        populateCategories();
-        toastr.success('Playlist loaded');
-      } catch (err) {
-        toastr.error('Failed to load playlist');
-      }
+    function loadChannels() {
+      fetch('https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/UDPTV.m3u')
+        .then(res => res.text())
+        .then(data => {
+          channels = parseM3U(data);
+          renderChannels();
+          populateCategories();
+          toastr.success('Playlist loaded');
+        })
+        .catch(err => toastr.error('Failed to load playlist'));
     }
 
     function renderChannels() {
@@ -166,9 +144,14 @@
       const player = document.getElementById('player');
       if (currentUrl !== url) {
         player.src = url;
+        player.load();
         currentUrl = url;
       }
-      player.play();
+      player.play().catch(err => {
+        console.warn("Autoplay blocked:", err);
+        toastr.info("Click anywhere to start playback");
+        document.body.addEventListener("click", () => player.play(), { once: true });
+      });
     }
 
     function populateCategories() {
