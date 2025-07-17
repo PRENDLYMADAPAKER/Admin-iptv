@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Premium</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"/>
   <style>
     body {
       margin: 0;
@@ -12,80 +12,82 @@
       background-color: #121212;
       color: white;
     }
-
     header {
       background-color: #1e1e1e;
       padding: 10px 20px;
       display: flex;
       align-items: center;
     }
-
     header img {
       height: 40px;
       margin-right: 10px;
     }
-
     header h1 {
       margin: 0;
       font-size: 1.5em;
     }
-
+    #nowPlaying {
+      background-color: #222;
+      padding: 10px 20px;
+      font-size: 1.1em;
+      border-bottom: 2px solid #444;
+    }
     #player {
       width: 100%;
-      height: 300px;
+      height: 360px;
       background: black;
-      display: block;
     }
-
     .controls {
       padding: 10px 20px;
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }
-
     input, select, button {
-      padding: 6px;
+      padding: 5px;
       font-size: 1em;
-      border-radius: 4px;
+      flex: 1;
+      min-width: 120px;
     }
-
     .channel-list {
       display: flex;
       overflow-x: auto;
-      padding: 10px 20px;
+      padding: 10px;
       gap: 10px;
       scroll-snap-type: x mandatory;
     }
-
     .channel {
-      background-color: #1e1e1e;
-      padding: 8px;
-      border-radius: 8px;
-      cursor: pointer;
       flex: 0 0 auto;
       width: 140px;
+      background-color: #1e1e1e;
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
       scroll-snap-align: start;
-      text-align: center;
     }
-
     .channel img {
-      width: 60px;
-      height: 60px;
+      width: 40px;
+      height: 40px;
       object-fit: contain;
-      margin-bottom: 5px;
     }
-
     .channel-name {
       font-size: 0.85em;
+      text-align: center;
     }
   </style>
 </head>
 <body>
+
   <header>
     <img src="logo.png" alt="Logo">
     <h1>IPTV Premium</h1>
   </header>
+
+  <div id="nowPlaying">Now Playing: <span id="nowPlayingTitle">None</span></div>
 
   <video id="player" controls autoplay muted playsinline></video>
 
@@ -103,7 +105,7 @@
   <script>
     let channels = [];
     let currentUrl = "";
-    const sourceURL = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u';
+    const PLAYLIST_URL = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
 
     function parseM3U(data) {
       const lines = data.split('\n');
@@ -114,7 +116,6 @@
           const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
           const groupMatch = lines[i].match(/group-title="(.*?)"/);
           const url = lines[i + 1];
-
           result.push({
             name: titleMatch ? titleMatch[1] : 'Unknown',
             logo: logoMatch ? logoMatch[1] : '',
@@ -127,7 +128,7 @@
     }
 
     function loadChannels() {
-      fetch(sourceURL)
+      fetch(PLAYLIST_URL)
         .then(res => res.text())
         .then(data => {
           channels = parseM3U(data);
@@ -149,21 +150,23 @@
           const el = document.createElement('div');
           el.className = 'channel';
           el.innerHTML = `
-            <img src="${ch.logo || 'https://via.placeholder.com/60'}" alt="Logo">
+            <img src="${ch.logo || 'https://via.placeholder.com/40'}" alt="Logo">
             <div class="channel-name">${ch.name}</div>
           `;
-          el.onclick = () => playChannel(ch.url);
+          el.onclick = () => playChannel(ch.url, ch.name);
           container.appendChild(el);
         });
     }
 
-    function playChannel(url) {
+    function playChannel(url, name) {
       const player = document.getElementById('player');
+      const nowTitle = document.getElementById('nowPlayingTitle');
       if (currentUrl !== url) {
         player.src = url;
         player.load();
         currentUrl = url;
       }
+      nowTitle.textContent = name || 'Unknown';
       player.play().catch(err => {
         console.warn("Autoplay blocked:", err);
         toastr.info("Click anywhere to start playback");
@@ -188,8 +191,7 @@
       loadChannels();
     }
 
-    // Refresh every 15 minutes
-    setInterval(updatePlaylist, 15 * 60 * 1000);
+    setInterval(loadChannels, 15 * 60 * 1000);
 
     document.getElementById('search').addEventListener('input', renderChannels);
     document.getElementById('category').addEventListener('change', renderChannels);
