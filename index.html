@@ -30,11 +30,15 @@
       width: 100%;
       height: 200px;
       background: black;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
     .controls {
       padding: 10px 20px;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
     input, select, button {
       padding: 5px;
@@ -83,10 +87,12 @@
 
   <div class="channel-list" id="channelList"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
   <script>
     let channels = [];
     let currentUrl = "";
+    let hls;
 
     function parseM3U(data) {
       const lines = data.split('\n');
@@ -143,10 +149,26 @@
     function playChannel(url) {
       const player = document.getElementById('player');
       if (currentUrl !== url) {
-        player.src = url;
+        if (hls) {
+          hls.destroy();
+        }
+        if (Hls.isSupported()) {
+          hls = new Hls();
+          hls.loadSource(url);
+          hls.attachMedia(player);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            player.play();
+          });
+        } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
+          player.src = url;
+          player.addEventListener('loadedmetadata', () => {
+            player.play();
+          });
+        } else {
+          toastr.error("Your browser doesn't support HLS");
+        }
         currentUrl = url;
       }
-      player.play();
     }
 
     function populateCategories() {
