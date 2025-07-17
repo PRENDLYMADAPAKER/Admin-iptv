@@ -18,9 +18,6 @@
       padding: 10px 20px;
       display: flex;
       align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 999;
     }
 
     header img {
@@ -33,74 +30,64 @@
       font-size: 1.5em;
     }
 
-    #player-container {
-      position: sticky;
-      top: 60px;
-      background: black;
-      z-index: 998;
-    }
-
     #player {
       width: 100%;
       height: 300px;
       background: black;
+      display: block;
     }
 
     .controls {
       padding: 10px 20px;
       display: flex;
-      flex-wrap: wrap;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     input, select, button {
-      padding: 5px;
+      padding: 6px;
       font-size: 1em;
+      border-radius: 4px;
     }
 
     .channel-list {
       display: flex;
       overflow-x: auto;
-      gap: 10px;
       padding: 10px 20px;
-      scroll-behavior: smooth;
+      gap: 10px;
+      scroll-snap-type: x mandatory;
     }
 
     .channel {
-      flex: 0 0 auto;
-      width: 150px;
       background-color: #1e1e1e;
-      padding: 10px;
+      padding: 8px;
       border-radius: 8px;
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      flex: 0 0 auto;
+      width: 140px;
+      scroll-snap-align: start;
       text-align: center;
     }
 
     .channel img {
-      width: 80px;
-      height: 80px;
+      width: 60px;
+      height: 60px;
       object-fit: contain;
       margin-bottom: 5px;
     }
 
     .channel-name {
-      font-size: 0.9em;
+      font-size: 0.85em;
     }
   </style>
 </head>
 <body>
-
   <header>
     <img src="logo.png" alt="Logo">
     <h1>IPTV Premium</h1>
   </header>
 
-  <div id="player-container">
-    <video id="player" controls autoplay muted playsinline></video>
-  </div>
+  <video id="player" controls autoplay muted playsinline></video>
 
   <div class="controls">
     <input type="text" id="search" placeholder="Search channels...">
@@ -116,6 +103,7 @@
   <script>
     let channels = [];
     let currentUrl = "";
+    const sourceURL = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u';
 
     function parseM3U(data) {
       const lines = data.split('\n');
@@ -139,7 +127,7 @@
     }
 
     function loadChannels() {
-      fetch('https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u')
+      fetch(sourceURL)
         .then(res => res.text())
         .then(data => {
           channels = parseM3U(data);
@@ -161,7 +149,7 @@
           const el = document.createElement('div');
           el.className = 'channel';
           el.innerHTML = `
-            <img src="${ch.logo || 'https://via.placeholder.com/80'}" alt="Logo">
+            <img src="${ch.logo || 'https://via.placeholder.com/60'}" alt="Logo">
             <div class="channel-name">${ch.name}</div>
           `;
           el.onclick = () => playChannel(ch.url);
@@ -200,9 +188,11 @@
       loadChannels();
     }
 
+    // Refresh every 15 minutes
+    setInterval(updatePlaylist, 15 * 60 * 1000);
+
     document.getElementById('search').addEventListener('input', renderChannels);
     document.getElementById('category').addEventListener('change', renderChannels);
-
     window.onload = loadChannels;
   </script>
 </body>
