@@ -3,262 +3,210 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#141414" />
   <title>IPTV PREMIUM</title>
+  <link rel="icon" href="logo.png" type="image/png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
   <style>
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #111;
-      color: #fff;
+      background-color: #121212;
+      color: white;
     }
     header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background-color: #000;
-      padding: 10px;
+      background-color: #1f1f1f;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      padding: 10px;
     }
     header img {
+      width: 40px;
       height: 40px;
       margin-right: 10px;
     }
-    .logo-title {
-      display: flex;
-      align-items: center;
-    }
     header h1 {
-      font-size: 20px;
       margin: 0;
-      color: orange;
+      font-size: 1.2rem;
     }
-    #player-container {
-      position: relative;
-      background-color: #000;
-    }
-    video {
+    #player {
       width: 100%;
-      max-height: 300px;
+      max-height: 320px;
+      background: black;
     }
-    #search {
-      width: 90%;
+    #searchBar, #categoryButtons, #updateButton {
+      margin: 10px;
+    }
+    #searchInput {
+      width: 100%;
       padding: 10px;
-      margin: 20px auto 10px;
-      display: block;
-      border: none;
+      font-size: 16px;
       border-radius: 5px;
-    }
-    #categories {
-      display: flex;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      gap: 10px;
-      padding: 0 10px 10px;
-    }
-    .category-btn, #updateBtn {
-      padding: 5px 15px;
-      background-color: #222;
       border: none;
-      color: white;
-      border-radius: 20px;
-      cursor: pointer;
-    }
-    .channels {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 10px;
-      padding: 10px;
     }
     .channel {
-      background-color: #1c1c1c;
+      display: inline-block;
+      background-color: #1f1f1f;
+      margin: 5px;
       padding: 10px;
-      border-radius: 10px;
-      text-align: center;
+      border-radius: 5px;
+      width: 140px;
       cursor: pointer;
-      transition: transform 0.2s;
-    }
-    .channel:hover {
-      transform: scale(1.05);
     }
     .channel img {
       width: 100%;
-      height: 90px;
+      height: 80px;
       object-fit: contain;
+    }
+    .category-btn {
+      background-color: #333;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      margin: 2px;
       border-radius: 5px;
-      background-color: #000;
+      cursor: pointer;
     }
-    .channel-name {
-      margin-top: 5px;
-      font-size: 14px;
-    }
-    .toast {
+    #previewModal {
       position: fixed;
-      bottom: 20px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      padding: 10px 20px;
-      border-radius: 20px;
-      font-size: 14px;
+      transform: translate(-50%, -50%);
+      background: #000;
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 100;
       display: none;
-      z-index: 1000;
-      color: #fff;
     }
-    .toast.success {
-      background-color: green;
-    }
-    .toast.error {
-      background-color: red;
-    }
-    @media (prefers-color-scheme: light) {
-      body {
-        background: #f0f0f0;
-        color: #000;
-      }
-      header {
-        background-color: #fff;
-      }
-      .category-btn, #updateBtn {
-        background-color: #ccc;
-        color: #000;
-      }
-      .channel {
-        background-color: #fff;
-      }
-      .toast.success {
-        background-color: green;
-        color: white;
-      }
-      .toast.error {
-        background-color: red;
-        color: white;
-      }
+    #previewModal video {
+      width: 300px;
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo-title">
-      <img src="logo.png" alt="Logo" />
-      <h1>IPTV PREMIUM</h1>
-    </div>
-    <button id="updateBtn">Update Playlist</button>
+    <img src="logo.png" alt="Logo">
+    <h1>IPTV PREMIUM</h1>
   </header>
+  <video id="player" controls autoplay muted></video>
+  <div id="searchBar">
+    <input type="text" id="searchInput" placeholder="Search channels...">
+  </div>
+  <div id="categoryButtons"></div>
+  <div id="updateButton">
+    <button class="category-btn" onclick="loadPlaylist(true)">Update Playlist</button>
+  </div>
+  <div id="channelList"></div>
 
-  <div id="player-container">
-    <video id="video" controls autoplay></video>
+  <div id="previewModal">
+    <video id="previewVideo" controls autoplay muted></video>
   </div>
 
-  <input type="text" id="search" placeholder="Search channels..." />
-
-  <div id="categories"></div>
-  <div class="channels" id="channel-list"></div>
-
-  <div id="toast" class="toast"></div>
-
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script>
-    let allChannels = [];
+    const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
+    let channels = [];
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js');
+    const player = document.getElementById("player");
+    const previewModal = document.getElementById("previewModal");
+    const previewVideo = document.getElementById("previewVideo");
+
+    function showToast(message, isError = false) {
+      Toastify({
+        text: message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: isError ? "#f44336" : "#4CAF50",
+      }).showToast();
     }
 
-    async function fetchM3U(url) {
-      const res = await fetch(url);
-      const text = await res.text();
-      const lines = text.split('\n');
-      const channels = [];
-      let current = {};
-      lines.forEach(line => {
-        if (line.startsWith('#EXTINF:')) {
-          const logoMatch = line.match(/tvg-logo="(.*?)"/);
-          const nameMatch = line.split(',');
-          const groupMatch = line.match(/group-title="(.*?)"/);
-          current = {
-            name: nameMatch[1]?.trim() || 'No Name',
-            logo: logoMatch ? logoMatch[1] : '',
-            group: groupMatch ? groupMatch[1] : 'Others'
-          };
-        } else if (line.startsWith('http')) {
-          current.url = line.trim();
-          channels.push({ ...current });
+    function parseM3U(data) {
+      const lines = data.split("\n");
+      let group = "";
+      let logo = "";
+      channels = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith("#EXTINF")) {
+          const titleMatch = lines[i].match(/,(.*)$/);
+          const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
+          const groupMatch = lines[i].match(/group-title="(.*?)"/);
+
+          const title = titleMatch ? titleMatch[1] : "Unknown";
+          logo = logoMatch ? logoMatch[1] : "";
+          group = groupMatch ? groupMatch[1] : "Other";
+
+          const url = lines[i + 1];
+          if (url && url.startsWith("http")) {
+            channels.push({ title, url, logo, group });
+          }
         }
-      });
-      return channels;
+      }
+      renderChannels();
     }
 
-    function renderCategories(channels) {
-      const container = document.getElementById('categories');
-      container.innerHTML = '';
-      const groups = [...new Set(channels.map(c => c.group))];
-      groups.forEach(group => {
-        const btn = document.createElement('button');
-        btn.textContent = group;
-        btn.className = 'category-btn';
-        btn.onclick = () => renderChannels(channels.filter(c => c.group === group));
-        container.appendChild(btn);
-      });
-    }
+    function renderChannels(filter = "", group = "") {
+      const container = document.getElementById("channelList");
+      container.innerHTML = "";
 
-    function renderChannels(channels) {
-      const container = document.getElementById('channel-list');
-      container.innerHTML = '';
-      channels.forEach(channel => {
-        const div = document.createElement('div');
-        div.className = 'channel';
-        div.onclick = () => {
-          document.getElementById('video').src = channel.url;
-        };
+      const filtered = channels.filter(c => c.title.toLowerCase().includes(filter.toLowerCase()) && (group === "" || c.group === group));
+
+      [...new Set(channels.map(c => c.group))].forEach(g => {
+        const btn = document.createElement("button");
+        btn.className = "category-btn";
+        btn.textContent = g;
+        btn.onclick = () => renderChannels(document.getElementById("searchInput").value, g);
+        document.getElementById("categoryButtons").appendChild(btn);
+      });
+
+      filtered.forEach(channel => {
+        const div = document.createElement("div");
+        div.className = "channel";
         div.innerHTML = `
-          <img src="${channel.logo}" onerror="this.src='logo.png'" alt="${channel.name}" />
-          <div class="channel-name">${channel.name}</div>
+          <img src="${channel.logo}" onerror="this.src='logo.png'">
+          <div>${channel.title}</div>
         `;
+        div.onclick = () => {
+          if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(channel.url);
+            hls.attachMedia(player);
+          } else {
+            player.src = channel.url;
+          }
+        };
+        div.oncontextmenu = e => {
+          e.preventDefault();
+          previewModal.style.display = "block";
+          previewVideo.src = channel.url;
+        };
         container.appendChild(div);
       });
     }
 
-    function setupSearch() {
-      const input = document.getElementById('search');
-      input.addEventListener('input', () => {
-        const keyword = input.value.toLowerCase();
-        const filtered = allChannels.filter(c => c.name.toLowerCase().includes(keyword));
-        renderChannels(filtered);
-      });
-    }
+    document.getElementById("searchInput").addEventListener("input", (e) => {
+      renderChannels(e.target.value);
+    });
 
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      toast.className = `toast ${type}`;
-      toast.textContent = message;
-      toast.style.display = 'block';
-      setTimeout(() => {
-        toast.style.display = 'none';
-      }, 2500);
-    }
+    previewModal.onclick = () => {
+      previewModal.style.display = "none";
+      previewVideo.pause();
+    };
 
-    async function updatePlaylist() {
+    async function loadPlaylist(showToastFlag = false) {
+      if (showToastFlag) showToast("Updating playlist...");
       try {
-        showToast('Updating playlist...', 'success');
-        const url = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u';
-        allChannels = await fetchM3U(url);
-        renderCategories(allChannels);
-        renderChannels(allChannels);
-        showToast('Playlist updated!', 'success');
+        const res = await fetch(m3uUrl);
+        const text = await res.text();
+        parseM3U(text);
+        if (showToastFlag) showToast("Playlist updated!");
       } catch (err) {
-        console.error(err);
-        showToast('Failed to update playlist!', 'error');
+        if (showToastFlag) showToast("Failed to update playlist!", true);
       }
     }
 
-    document.getElementById('updateBtn').addEventListener('click', updatePlaylist);
-
-    (async () => {
-      await updatePlaylist();
-      setupSearch();
-    })();
+    loadPlaylist();
   </script>
 </body>
 </html>
