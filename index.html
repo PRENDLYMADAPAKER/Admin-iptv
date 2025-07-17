@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPTV Premium</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
   <style>
     body {
       margin: 0;
@@ -12,6 +12,7 @@
       background-color: #121212;
       color: white;
     }
+
     header {
       background-color: #1e1e1e;
       padding: 10px 20px;
@@ -19,58 +20,74 @@
       align-items: center;
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 999;
     }
+
     header img {
       height: 40px;
       margin-right: 10px;
     }
+
     header h1 {
       margin: 0;
       font-size: 1.5em;
     }
+
+    #player-container {
+      position: sticky;
+      top: 60px;
+      background: black;
+      z-index: 998;
+    }
+
     #player {
       width: 100%;
-      height: 400px;
+      height: 300px;
       background: black;
-      display: block;
     }
+
     .controls {
       padding: 10px 20px;
       display: flex;
-      gap: 10px;
       flex-wrap: wrap;
-      position: sticky;
-      top: 70px;
-      background: #121212;
-      z-index: 9;
+      gap: 10px;
     }
+
     input, select, button {
-      padding: 6px;
+      padding: 5px;
       font-size: 1em;
     }
+
     .channel-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      display: flex;
+      overflow-x: auto;
       gap: 10px;
       padding: 10px 20px;
+      scroll-behavior: smooth;
     }
+
     .channel {
+      flex: 0 0 auto;
+      width: 150px;
       background-color: #1e1e1e;
       padding: 10px;
       border-radius: 8px;
       cursor: pointer;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
+      text-align: center;
     }
+
     .channel img {
-      width: 50px;
-      height: 50px;
+      width: 80px;
+      height: 80px;
       object-fit: contain;
+      margin-bottom: 5px;
     }
+
     .channel-name {
-      font-size: 0.95em;
+      font-size: 0.9em;
     }
   </style>
 </head>
@@ -81,7 +98,9 @@
     <h1>IPTV Premium</h1>
   </header>
 
-  <video id="player" controls autoplay muted playsinline></video>
+  <div id="player-container">
+    <video id="player" controls autoplay muted playsinline></video>
+  </div>
 
   <div class="controls">
     <input type="text" id="search" placeholder="Search channels...">
@@ -137,13 +156,12 @@
       const container = document.getElementById('channelList');
       container.innerHTML = '';
 
-      channels
-        .filter(ch => ch.name.toLowerCase().includes(search) && (category === 'all' || ch.group === category))
+      channels.filter(ch => ch.name.toLowerCase().includes(search) && (category === 'all' || ch.group === category))
         .forEach(ch => {
           const el = document.createElement('div');
           el.className = 'channel';
           el.innerHTML = `
-            <img src="${ch.logo || 'https://via.placeholder.com/50'}" alt="Logo">
+            <img src="${ch.logo || 'https://via.placeholder.com/80'}" alt="Logo">
             <div class="channel-name">${ch.name}</div>
           `;
           el.onclick = () => playChannel(ch.url);
