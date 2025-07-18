@@ -101,6 +101,7 @@
     let channels = [];
     let currentIndex = 0;
     let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    let groupList = [];
 
     async function fetchM3U() {
       const res = await fetch("https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u");
@@ -129,9 +130,9 @@
 
     function renderCategories() {
       const filter = document.getElementById("categoryFilter");
-      const categories = [...new Set(channels.map(c => c.group))];
+      groupList = [...new Set(channels.map(c => c.group))];
       filter.innerHTML = '<option value="All">All</option><option value="Favorites">Favorites</option>' +
-        categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        groupList.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
     function renderChannels() {
@@ -183,27 +184,37 @@
       document.getElementById("nowTitle").textContent = ch.name;
     }
 
-    // Swipe gesture
-    const video = document.getElementById("videoPlayer");
-    let startX = 0;
-    video.addEventListener("touchstart", (e) => {
-      startX = e.touches[0].clientX;
-    });
-    video.addEventListener("touchend", (e) => {
-      let endX = e.changedTouches[0].clientX;
-      let diff = endX - startX;
-      if (Math.abs(diff) > 50) {
-        if (diff < 0) {
-          currentIndex = (currentIndex + 1) % channels.length;
-        } else {
-          currentIndex = (currentIndex - 1 + channels.length) % channels.length;
-        }
-        playChannel(currentIndex);
-      }
-    });
-
     document.getElementById("searchBar").addEventListener("input", renderChannels);
     document.getElementById("categoryFilter").addEventListener("change", renderChannels);
+
+    // Swipe to change category inside channel list
+    let startX2 = 0;
+    const channelList = document.getElementById("channelList");
+
+    channelList.addEventListener("touchstart", (e) => {
+      startX2 = e.touches[0].clientX;
+    });
+
+    channelList.addEventListener("touchend", (e) => {
+      const endX = e.changedTouches[0].clientX;
+      const diffX = endX - startX2;
+
+      if (Math.abs(diffX) > 50) {
+        const select = document.getElementById("categoryFilter");
+        const currentVal = select.value;
+        const allCats = ["All", "Favorites", ...groupList];
+        let index = allCats.indexOf(currentVal);
+
+        if (diffX < 0 && index < allCats.length - 1) {
+          index++;
+        } else if (diffX > 0 && index > 0) {
+          index--;
+        }
+
+        select.value = allCats[index];
+        renderChannels();
+      }
+    });
 
     fetchM3U();
   </script>
