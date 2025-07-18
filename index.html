@@ -1,182 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPTV Premium</title>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#000000" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPTV PREMIUM</title>
+  <link rel="icon" href="logo.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
       background-color: #121212;
       color: white;
-      overflow-x: hidden;
+      font-family: 'Segoe UI', sans-serif;
     }
-    header {
+    .app-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 10px;
-      background: #1e1e1e;
-    }
-    header img {
-      width: 40px;
-      height: 40px;
-    }
-    header h1 {
-      font-size: 20px;
-      margin: 0;
-    }
-    #videoPlayer {
-      width: 100%;
-      height: 240px;
-      background: black;
+      padding: 10px 15px;
+      background-color: #1f1f1f;
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: 999;
+      border-bottom: 1px solid #333;
     }
-    .controls {
+    .app-header img {
+      height: 30px;
+      margin-right: 10px;
+    }
+    .app-header strong {
+      font-size: 1.25rem;
+    }
+    .theme-toggle {
+      margin-left: auto;
+      cursor: pointer;
+    }
+    .video-player {
+      width: 100%;
+      height: 250px;
+      background: black;
+    }
+    .now-playing {
+      background: #222;
+      padding: 8px 16px;
+      font-weight: bold;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 10px;
+      border-bottom: 1px solid #333;
+    }
+    .now-playing img {
+      height: 24px;
+      margin-right: 8px;
     }
     .channel-list {
       display: flex;
       overflow-x: auto;
-      gap: 10px;
       padding: 10px;
-    }
-    .channel {
-      flex: 0 0 auto;
-      width: 160px;
-      background: #222;
-      border-radius: 10px;
-      padding: 10px;
-      cursor: pointer;
-    }
-    .channel img {
-      width: 100%;
-      height: 90px;
-      object-fit: cover;
-      border-radius: 6px;
-    }
-    .channel h4 {
-      margin: 5px 0 0;
-      font-size: 14px;
-    }
-    .banner {
-      background: #1e1e1e;
-      padding: 10px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
       gap: 10px;
     }
-    .banner img {
-      width: 30px;
-      height: 30px;
-    }
-    .dark-toggle {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 20px;
+    .channel-item {
+      background: #1f1f1f;
+      padding: 10px;
+      border-radius: 8px;
+      min-width: 150px;
       cursor: pointer;
+    }
+    .channel-item:hover {
+      background: #333;
+    }
+    .controls {
+      padding: 10px;
+    }
+    .favorites-filter {
+      cursor: pointer;
+      margin-left: 10px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <img src="logo.png" alt="Logo" />
-    <h1>IPTV Premium</h1>
-    <button class="dark-toggle" onclick="toggleTheme()"><i class="fas fa-moon"></i></button>
-  </header>
 
-  <video id="videoPlayer" controls autoplay></video>
+  <div class="app-header">
+    <img src="logo.png" alt="Logo">
+    <strong>IPTV PREMIUM</strong>
+    <span class="material-icons theme-toggle" onclick="toggleTheme()">brightness_6</span>
+  </div>
 
-  <div class="banner">
-    <img id="nowIcon" src="" alt="icon" />
-    <span id="nowPlaying">Now Playing: None</span>
-    <button onclick="togglePiP()">📺 PiP</button>
-    <button onclick="alert('Chromecast SDK not integrated yet.')">📡 Cast</button>
+  <div class="video-player" id="videoPlayer">
+    <video id="player" controls autoplay></video>
+  </div>
+
+  <div class="now-playing" id="nowPlaying">
+    <img src="logo.png" alt="Channel Icon">
+    <span id="nowPlayingTitle">Now Playing</span>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="searchInput" class="form-control mb-2" placeholder="Search channels...">
+    <select id="categoryFilter" class="form-select">
+      <option value="all">All Categories</option>
+    </select>
   </div>
 
   <div class="channel-list" id="channelList"></div>
 
   <script>
     const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
-    const player = document.getElementById("videoPlayer");
-    const channelList = document.getElementById("channelList");
-    const nowPlaying = document.getElementById("nowPlaying");
-    const nowIcon = document.getElementById("nowIcon");
+    let channels = [];
+    let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
 
-    async function loadChannels() {
+    async function loadM3U() {
       const res = await fetch(m3uUrl);
       const text = await res.text();
-      const lines = text.split("\n");
-      const channels = [];
+      const lines = text.split('\n');
+      let temp = {};
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith("#EXTINF")) {
-          const nameMatch = lines[i].match(/tvg-name="(.*?)"/);
-          const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
-          const title = nameMatch ? nameMatch[1] : "Unknown";
-          const logo = logoMatch ? logoMatch[1] : "logo.png";
-          const url = lines[i + 1];
-          channels.push({ title, logo, url });
+        const line = lines[i];
+        if (line.startsWith('#EXTINF')) {
+          const nameMatch = line.match(/,(.*)$/);
+          const groupMatch = line.match(/group-title="(.*?)"/);
+          const logoMatch = line.match(/tvg-logo="(.*?)"/);
+          temp = {
+            name: nameMatch ? nameMatch[1] : 'Unknown',
+            group: groupMatch ? groupMatch[1] : 'Other',
+            logo: logoMatch ? logoMatch[1] : 'logo.png',
+            url: lines[i + 1]
+          };
+        } else if (line.startsWith('http') && temp.name) {
+          channels.push(temp);
+          temp = {};
         }
       }
+      populateCategories();
+      renderChannels();
+    }
 
-      channels.forEach((ch, i) => {
-        const div = document.createElement("div");
-        div.className = "channel";
-        div.innerHTML = `<img src="${ch.logo}" /><h4>${ch.title}</h4>`;
-        div.onclick = () => playChannel(ch);
-        channelList.appendChild(div);
+    function populateCategories() {
+      const select = document.getElementById('categoryFilter');
+      const groups = [...new Set(channels.map(c => c.group))];
+      groups.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g;
+        opt.textContent = g;
+        select.appendChild(opt);
       });
+    }
 
-      if (channels.length > 0) playChannel(channels[0]);
+    function renderChannels(filter = '') {
+      const list = document.getElementById('channelList');
+      const category = document.getElementById('categoryFilter').value;
+      list.innerHTML = '';
+      channels.filter(c =>
+        (category === 'all' || c.group === category) &&
+        (c.name.toLowerCase().includes(filter.toLowerCase()))
+      ).forEach(channel => {
+        const div = document.createElement('div');
+        div.className = 'channel-item';
+        div.innerHTML = `<strong>${channel.name}</strong><br/><small>${channel.group}</small>`;
+        div.onclick = () => playChannel(channel);
+        list.appendChild(div);
+      });
     }
 
     function playChannel(channel) {
+      const player = document.getElementById('player');
+      const nowTitle = document.getElementById('nowPlayingTitle');
+      const nowImg = document.querySelector('#nowPlaying img');
       player.src = channel.url;
-      nowPlaying.innerText = `Now Playing: ${channel.title}`;
-      nowIcon.src = channel.logo;
-      localStorage.setItem("lastChannel", JSON.stringify(channel));
-    }
-
-    function togglePiP() {
-      if (document.pictureInPictureElement) {
-        document.exitPictureInPicture();
-      } else {
-        player.requestPictureInPicture();
-      }
+      nowTitle.textContent = channel.name;
+      nowImg.src = channel.logo;
     }
 
     function toggleTheme() {
-      document.body.classList.toggle("light");
-      localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
+      document.body.classList.toggle('light');
     }
 
-    function applySavedTheme() {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light") document.body.classList.add("light");
-    }
+    document.getElementById('searchInput').addEventListener('input', e => {
+      renderChannels(e.target.value);
+    });
 
-    function resumeLastChannel() {
-      const saved = localStorage.getItem("lastChannel");
-      if (saved) {
-        const channel = JSON.parse(saved);
-        playChannel(channel);
-      }
-    }
+    document.getElementById('categoryFilter').addEventListener('change', () => {
+      renderChannels(document.getElementById('searchInput').value);
+    });
 
-    applySavedTheme();
-    loadChannels().then(resumeLastChannel);
+    window.onload = loadM3U;
   </script>
 </body>
 </html>
