@@ -4,246 +4,224 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPTV Premium</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+  <link rel="manifest" href="manifest.json" />
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: sans-serif;
       background-color: #121212;
-      color: white;
+      color: #fff;
     }
     header {
-      background-color: #1e1e1e;
-      padding: 10px 20px;
-      display: flex;
-      align-items: center;
-    }
-    header img {
-      height: 40px;
-      margin-right: 10px;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 1.5em;
-    }
-    #player {
-      width: 100%;
-      height: 300px;
-      background: black;
-    }
-    .now-playing {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 10px;
-      background-color: #1e1e1e;
-      border-top: 1px solid #333;
-      border-bottom: 1px solid #333;
+      background-color: #1f1f1f;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header img {
+      height: 40px;
+    }
+    .now-playing {
+      padding: 5px 10px;
+      background: #333;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .now-playing img {
-      width: 40px;
-      height: 40px;
+      height: 25px;
+      width: 25px;
       object-fit: contain;
     }
-    .controls {
-      padding: 10px 20px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+    .player-container {
+      position: sticky;
+      top: 60px;
+      background: black;
     }
-    input, select, button {
-      padding: 5px;
-      font-size: 1em;
+    video {
+      width: 100%;
+      max-height: 300px;
+      background: black;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+    }
+    .categories {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 10px;
+    }
+    .categories button {
+      padding: 5px 10px;
+      background: #333;
+      border: none;
+      color: #fff;
+      cursor: pointer;
     }
     .channel-list {
       display: flex;
       overflow-x: auto;
+      scroll-snap-type: x mandatory;
       gap: 10px;
-      padding: 10px 20px;
-    }
-    .channel {
-      background-color: #1e1e1e;
       padding: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 120px;
     }
-    .channel img {
-      width: 50px;
-      height: 50px;
-      object-fit: contain;
-    }
-    .channel-name {
-      font-size: 0.85em;
+    .channel-card {
+      flex: 0 0 auto;
+      width: 150px;
+      background: #222;
+      border-radius: 10px;
+      padding: 10px;
       text-align: center;
-    }
-    .favorite {
-      color: gold;
+      scroll-snap-align: start;
       cursor: pointer;
+    }
+    .channel-card img {
+      width: 100%;
+      height: 80px;
+      object-fit: contain;
+      margin-bottom: 5px;
+    }
+    .dark-mode-toggle {
+      cursor: pointer;
+      font-size: 20px;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="logo.png" alt="Logo">
+    <img src="logo.png" alt="Logo" />
     <h1>IPTV Premium</h1>
-  </header>
-
-  <video id="player" controls autoplay muted playsinline></video>
-
-  <div class="now-playing" id="nowPlaying" style="display: none;">
-    <img id="nowLogo" src="" alt="Channel Logo">
-    <div>
-      <div id="nowTitle">Now Playing</div>
+    <div style="margin-left:auto">
+      <span class="dark-mode-toggle">🌙</span>
     </div>
+  </header>
+  <div class="now-playing" id="nowPlaying">
+    <img id="nowLogo" src="" alt="icon" />
+    <span id="nowTitle">Now Playing</span>
   </div>
-
+  <div class="player-container">
+    <video id="video" controls autoplay></video>
+  </div>
   <div class="controls">
-    <input type="text" id="search" placeholder="Search channels...">
-    <select id="category">
-      <option value="all">All Categories</option>
-    </select>
-    <button onclick="updatePlaylist()">Update Playlist</button>
+    <input type="text" id="search" placeholder="Search..." />
   </div>
-
+  <div class="categories" id="categoryButtons"></div>
   <div class="channel-list" id="channelList"></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
   <script>
+    const video = document.getElementById("video");
+    const nowTitle = document.getElementById("nowTitle");
+    const nowLogo = document.getElementById("nowLogo");
+    const channelList = document.getElementById("channelList");
+    const categoryButtons = document.getElementById("categoryButtons");
+    const searchInput = document.getElementById("search");
+    const darkModeToggle = document.querySelector(".dark-mode-toggle");
+
     let channels = [];
-    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-    let currentUrl = "";
-    let epgData = {};
+    let currentChannelIndex = 0;
+    let currentCategory = "All";
+
+    function fetchM3U() {
+      fetch("https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u")
+        .then(res => res.text())
+        .then(parseM3U);
+    }
 
     function parseM3U(data) {
-      const lines = data.split('\n');
-      const result = [];
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('#EXTINF')) {
-          const titleMatch = lines[i].match(/,(.*)$/);
-          const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
-          const groupMatch = lines[i].match(/group-title="(.*?)"/);
-          const tvgIdMatch = lines[i].match(/tvg-id="(.*?)"/);
-          const url = lines[i + 1];
+      const lines = data.split("\n");
+      let categorySet = new Set(["All"]);
 
-          result.push({
-            name: titleMatch ? titleMatch[1] : 'Unknown',
-            logo: logoMatch ? logoMatch[1] : '',
-            group: groupMatch ? groupMatch[1] : 'Other',
-            tvgId: tvgIdMatch ? tvgIdMatch[1] : '',
-            url
-          });
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith("#EXTINF")) {
+          const info = lines[i];
+          const url = lines[i + 1];
+          const nameMatch = info.match(/,(.*)$/);
+          const logoMatch = info.match(/tvg-logo="(.*?)"/);
+          const groupMatch = info.match(/group-title="(.*?)"/);
+
+          const name = nameMatch ? nameMatch[1] : "Unknown";
+          const logo = logoMatch ? logoMatch[1] : "";
+          const group = groupMatch ? groupMatch[1] : "Others";
+
+          categorySet.add(group);
+
+          channels.push({ name, logo, group, url });
         }
       }
-      return result;
-    }
-
-    function loadEPG() {
-      fetch('https://tinyurl.com/DrewLive002-epg')
-        .then(res => res.json())
-        .then(data => epgData = data)
-        .catch(() => toastr.warning('EPG not available'));
-    }
-
-    function loadChannels() {
-      fetch('https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u')
-        .then(res => res.text())
-        .then(data => {
-          channels = parseM3U(data);
-          renderChannels();
-          populateCategories();
-          toastr.success('Playlist loaded');
-        })
-        .catch(err => toastr.error('Failed to load playlist'));
-    }
-
-    function renderChannels() {
-      const search = document.getElementById('search').value.toLowerCase();
-      const category = document.getElementById('category').value;
-      const container = document.getElementById('channelList');
-      container.innerHTML = '';
-
-      channels.filter(ch =>
-        ch.name.toLowerCase().includes(search) &&
-        (category === 'all' || ch.group === category)
-      ).forEach(ch => {
-        const el = document.createElement('div');
-        el.className = 'channel';
-        el.innerHTML = `
-          <img src="${ch.logo || 'https://via.placeholder.com/50'}" alt="Logo">
-          <div class="channel-name">${ch.name}</div>
-          <div class="favorite" onclick="toggleFavorite('${ch.url}'); event.stopPropagation();">
-            ${favorites.includes(ch.url) ? '★' : '☆'}
-          </div>
-        `;
-        el.onclick = () => playChannel(ch);
-        container.appendChild(el);
-      });
-    }
-
-    function toggleFavorite(url) {
-      if (favorites.includes(url)) {
-        favorites = favorites.filter(f => f !== url);
-      } else {
-        favorites.push(url);
-      }
-      localStorage.setItem('favorites', JSON.stringify(favorites));
+      renderCategories(Array.from(categorySet));
       renderChannels();
     }
 
-    function playChannel(ch) {
-      const player = document.getElementById('player');
-      if (currentUrl !== ch.url) {
-        player.src = ch.url;
-        player.load();
-        currentUrl = ch.url;
-        updateNowPlaying(ch);
+    function renderCategories(categories) {
+      categoryButtons.innerHTML = "";
+      categories.forEach(cat => {
+        const btn = document.createElement("button");
+        btn.textContent = cat;
+        btn.onclick = () => {
+          currentCategory = cat;
+          renderChannels();
+        };
+        categoryButtons.appendChild(btn);
+      });
+    }
+
+    function renderChannels() {
+      const filtered = channels.filter(c =>
+        (currentCategory === "All" || c.group === currentCategory) &&
+        c.name.toLowerCase().includes(searchInput.value.toLowerCase())
+      );
+      channelList.innerHTML = "";
+      filtered.forEach((ch, index) => {
+        const card = document.createElement("div");
+        card.className = "channel-card";
+        card.innerHTML = `<img src="${ch.logo}" alt="logo" /><div>${ch.name}</div>`;
+        card.onclick = () => playChannel(index);
+        channelList.appendChild(card);
+      });
+    }
+
+    function playChannel(index) {
+      const ch = channels[index];
+      video.src = ch.url;
+      nowTitle.textContent = ch.name;
+      nowLogo.src = ch.logo;
+      currentChannelIndex = index;
+      localStorage.setItem("lastChannel", index);
+    }
+
+    function restoreLastChannel() {
+      const index = localStorage.getItem("lastChannel");
+      if (index && channels[index]) {
+        playChannel(Number(index));
       }
-      player.play().catch(err => {
-        toastr.info("Click anywhere to start playback");
-        document.body.addEventListener("click", () => player.play(), { once: true });
-      });
     }
 
-    function updateNowPlaying(ch) {
-      const banner = document.getElementById('nowPlaying');
-      const logo = document.getElementById('nowLogo');
-      const title = document.getElementById('nowTitle');
+    searchInput.addEventListener("input", renderChannels);
 
-      banner.style.display = 'flex';
-      logo.src = ch.logo || 'https://via.placeholder.com/50';
-      title.textContent = epgData[ch.tvgId]?.title || ch.name;
-    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") {
+        currentChannelIndex = (currentChannelIndex + 1) % channels.length;
+        playChannel(currentChannelIndex);
+      } else if (e.key === "ArrowLeft") {
+        currentChannelIndex = (currentChannelIndex - 1 + channels.length) % channels.length;
+        playChannel(currentChannelIndex);
+      }
+    });
 
-    function populateCategories() {
-      const uniqueGroups = [...new Set(channels.map(ch => ch.group))];
-      const select = document.getElementById('category');
-      select.innerHTML = '<option value="all">All Categories</option>';
-      uniqueGroups.forEach(group => {
-        const opt = document.createElement('option');
-        opt.value = group;
-        opt.textContent = group;
-        select.appendChild(opt);
-      });
-    }
-
-    function updatePlaylist() {
-      toastr.info('Updating playlist...');
-      loadChannels();
-      loadEPG();
-    }
-
-    document.getElementById('search').addEventListener('input', renderChannels);
-    document.getElementById('category').addEventListener('change', renderChannels);
-
-    window.onload = () => {
-      loadChannels();
-      loadEPG();
-      setInterval(updatePlaylist, 15 * 60 * 1000);
+    darkModeToggle.onclick = () => {
+      document.body.classList.toggle("light");
+      darkModeToggle.textContent = document.body.classList.contains("light") ? "☀️" : "🌙";
     };
+
+    fetchM3U();
+    setTimeout(restoreLastChannel, 2000);
   </script>
 </body>
 </html>
