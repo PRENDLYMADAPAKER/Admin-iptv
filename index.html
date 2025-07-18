@@ -2,215 +2,300 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Premium</title>
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #121212;
+      font-family: sans-serif;
+      background-color: #111;
       color: #fff;
     }
+
     header {
-      background-color: #1c1c1c;
-      padding: 10px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      padding: 10px;
+      background-color: #000;
+      justify-content: center;
     }
+
     header img {
       height: 40px;
     }
-    header h1 {
-      font-size: 20px;
-      margin: 0;
-    }
-    video {
+
+    #player {
       width: 100%;
-      max-height: 240px;
-      background-color: #000;
+      height: 200px;
+      background: #000;
     }
+
     .now-playing {
+      background: #222;
       padding: 10px;
-      background-color: #1f1f1f;
+      font-weight: bold;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    .now-playing img {
-      height: 30px;
-      width: 30px;
-    }
+
     .controls {
+      display: flex;
       padding: 10px;
+      gap: 10px;
     }
+
     select, input {
-      width: 100%;
       padding: 8px;
-      margin-bottom: 10px;
       border-radius: 5px;
       border: none;
-      font-size: 16px;
+      flex: 1;
     }
-    .channels {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      transition: transform 0.3s ease-in-out;
-    }
-    .channel {
-      width: 45%;
-      background-color: #292929;
-      border-radius: 10px;
-      padding: 10px;
-      text-align: center;
+
+    .channel-grid-wrapper {
+      overflow: hidden;
       position: relative;
     }
-    .channel img {
-      width: 100%;
+
+    .channel-grid {
+      display: flex;
+      transition: transform 0.3s ease;
+    }
+
+    .channel-page {
+      flex: 0 0 100%;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .channel {
+      background: #222;
       border-radius: 10px;
+      padding: 10px;
+      width: 45%;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.2s;
     }
-    .channel .fav {
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      background: rgba(255,255,255,0.2);
-      border: none;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      color: white;
-      font-size: 16px;
+
+    .channel img {
+      max-width: 100%;
+      max-height: 60px;
+      object-fit: contain;
+      margin-bottom: 5px;
     }
-    @media(min-width: 768px){
+
+    .channel:hover {
+      transform: scale(1.05);
+    }
+
+    .favorite {
+      color: gold;
+      float: right;
+      font-size: 1.2em;
+      cursor: pointer;
+    }
+
+    @media(min-width: 768px) {
+      #player {
+        height: 360px;
+      }
+
       .channel {
         width: 200px;
+      }
+
+      .channel-page {
+        justify-content: center;
       }
     }
   </style>
 </head>
 <body>
+
   <header>
-    <img src="logo.png" alt="IPTV Premium" />
-    <h1>IPTV PREMIUM</h1>
+    <img src="https://i.imgur.com/yhZr8Lq.png" alt="IPTV Premium Logo" />
   </header>
 
-  <video id="player" controls autoplay></video>
+  <video id="player" controls autoplay muted></video>
 
-  <div class="now-playing">
-    <img id="channel-icon" src="" alt="icon" />
-    <div>
-      <strong id="channel-name">Now Playing:</strong><br>
-      <small id="epg">EPG unavailable</small>
-    </div>
-  </div>
+  <div class="now-playing" id="nowPlaying">Now Playing: </div>
 
   <div class="controls">
-    <select id="category-filter"></select>
-    <input type="text" id="search" placeholder="Search channels...">
+    <select id="categoryFilter">
+      <option value="All">All</option>
+      <option value="Favorites">Favorites</option>
+    </select>
+    <input type="text" id="searchInput" placeholder="Search channel...">
   </div>
 
-  <div id="channel-list" class="channels"></div>
+  <div id="swipeZone" class="channel-grid-wrapper">
+    <div id="channelGrid" class="channel-grid"></div>
+  </div>
 
   <script>
-    const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
-    let channels = [], favorites = [], filtered = [];
-    let currentIndex = 0;
+    const m3uUrl = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u';
+    const player = document.getElementById('player');
+    const nowPlaying = document.getElementById('nowPlaying');
+    const channelGrid = document.getElementById('channelGrid');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const searchInput = document.getElementById('searchInput');
 
-    function parseM3U(data) {
-      const lines = data.split('\n');
-      let group = '', logo = '', name = '', url = '';
+    let channels = [];
+    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    let currentPage = 0;
+    let pages = [];
+
+    function parseM3U(text) {
+      const lines = text.split('\n');
+      let current = {};
       for (let line of lines) {
         if (line.startsWith('#EXTINF')) {
-          const info = line.match(/tvg-logo="(.*?)".*group-title="(.*?)".*,(.*)/);
-          if (info) {
-            logo = info[1];
-            group = info[2];
-            name = info[3];
-          }
+          const name = line.split(',')[1]?.trim() || '';
+          const match = line.match(/group-title="(.*?)"/);
+          const group = match ? match[1] : 'Other';
+          const logo = line.match(/tvg-logo="(.*?)"/)?.[1] || '';
+          current = { name, group, logo };
         } else if (line.startsWith('http')) {
-          url = line.trim();
-          channels.push({ name, logo, group, url });
+          current.url = line.trim();
+          channels.push({ ...current });
         }
       }
-      favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
     }
 
-    function updateUI() {
-      const list = document.getElementById('channel-list');
-      list.innerHTML = '';
-      filtered.slice(currentIndex, currentIndex + 2).forEach((ch, idx) => {
-        const div = document.createElement('div');
-        div.className = 'channel';
-        div.innerHTML = `
-          <img src="${ch.logo}" alt="logo" onclick="playChannel(${channels.indexOf(ch)})"/>
-          <div>${ch.name}</div>
-          <button class="fav" onclick="toggleFavorite(${channels.indexOf(ch)})">${favorites.includes(ch.name) ? '★' : '☆'}</button>
-        `;
-        list.appendChild(div);
+    async function loadM3U() {
+      const res = await fetch(m3uUrl);
+      const text = await res.text();
+      parseM3U(text);
+      buildCategoryList();
+      filterAndRender();
+    }
+
+    function buildCategoryList() {
+      const groups = [...new Set(channels.map(c => c.group))];
+      groups.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g;
+        opt.textContent = g;
+        categoryFilter.appendChild(opt);
       });
     }
 
-    function playChannel(index) {
-      const ch = channels[index];
-      document.getElementById('player').src = ch.url;
-      document.getElementById('channel-name').innerText = `Now Playing: ${ch.name}`;
-      document.getElementById('channel-icon').src = ch.logo;
-    }
+    function filterAndRender() {
+      const query = searchInput.value.toLowerCase();
+      const selectedCat = categoryFilter.value;
+      let filtered = channels;
 
-    function toggleFavorite(index) {
-      const name = channels[index].name;
-      if (favorites.includes(name)) {
-        favorites = favorites.filter(n => n !== name);
-      } else {
-        favorites.push(name);
+      if (selectedCat === 'Favorites') {
+        filtered = filtered.filter(c => favorites.includes(c.url));
+      } else if (selectedCat !== 'All') {
+        filtered = filtered.filter(c => c.group === selectedCat);
       }
-      localStorage.setItem('favorites', JSON.stringify(favorites));
-      applyFilters();
+
+      if (query) {
+        filtered = filtered.filter(c => c.name.toLowerCase().includes(query));
+      }
+
+      renderPages(filtered);
     }
 
-    function applyFilters() {
-      const cat = document.getElementById('category-filter').value;
-      const keyword = document.getElementById('search').value.toLowerCase();
-      filtered = channels.filter(c => 
-        (cat === 'All' || c.group === cat || (cat === 'Favorite' && favorites.includes(c.name))) &&
-        c.name.toLowerCase().includes(keyword)
-      );
-      currentIndex = 0;
-      updateUI();
-    }
+    function renderPages(list) {
+      channelGrid.innerHTML = '';
+      pages = [];
 
-    document.getElementById('search').addEventListener('input', applyFilters);
+      for (let i = 0; i < list.length; i += 2) {
+        const page = list.slice(i, i + 2);
+        pages.push(page);
+      }
 
-    document.addEventListener('touchstart', handleTouchStart, false);
-    document.addEventListener('touchmove', handleTouchMove, false);
-    let xDown = null;
-
-    function handleTouchStart(evt) {
-      xDown = evt.touches[0].clientX;
-    }
-    function handleTouchMove(evt) {
-      if (!xDown) return;
-      let xUp = evt.touches[0].clientX;
-      let xDiff = xDown - xUp;
-      if (xDiff > 50 && currentIndex + 2 < filtered.length) currentIndex += 2;
-      if (xDiff < -50 && currentIndex - 2 >= 0) currentIndex -= 2;
-      updateUI();
-      xDown = null;
-    }
-
-    fetch(m3uUrl)
-      .then(res => res.text())
-      .then(data => {
-        parseM3U(data);
-        const cats = [...new Set(channels.map(c => c.group))];
-        const select = document.getElementById('category-filter');
-        select.innerHTML = `<option>All</option><option>Favorite</option>` + cats.map(c => `<option>${c}</option>`).join('');
-        select.addEventListener('change', applyFilters);
-        filtered = channels;
-        updateUI();
+      pages.forEach((page, i) => {
+        const div = document.createElement('div');
+        div.className = 'channel-page';
+        page.forEach(ch => {
+          const card = document.createElement('div');
+          card.className = 'channel';
+          card.innerHTML = `
+            <span class="favorite" data-url="${ch.url}">${favorites.includes(ch.url) ? '★' : '☆'}</span>
+            <img src="${ch.logo}" alt="${ch.name}"/>
+            <div>${ch.name}</div>
+          `;
+          card.onclick = () => playChannel(ch);
+          div.appendChild(card);
+        });
+        channelGrid.appendChild(div);
       });
+
+      currentPage = 0;
+      updatePage();
+    }
+
+    function playChannel(ch) {
+      player.src = ch.url;
+      nowPlaying.innerHTML = `<img src="${ch.logo}" height="20"/> Now Playing: ${ch.name}`;
+    }
+
+    function updatePage() {
+      channelGrid.style.transform = `translateX(-${currentPage * 100}%)`;
+    }
+
+    function nextPage() {
+      if (currentPage < pages.length - 1) {
+        currentPage++;
+        updatePage();
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 0) {
+        currentPage--;
+        updatePage();
+      }
+    }
+
+    // Swipe Support
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    const swipeZone = document.getElementById('swipeZone');
+    swipeZone.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+    });
+
+    swipeZone.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].clientX;
+      handleSwipe();
+    });
+
+    function handleSwipe() {
+      if (touchEndX < touchStartX - 50) nextPage();
+      if (touchEndX > touchStartX + 50) prevPage();
+    }
+
+    // Favorite toggle
+    document.addEventListener('click', e => {
+      if (e.target.classList.contains('favorite')) {
+        const url = e.target.dataset.url;
+        if (favorites.includes(url)) {
+          favorites = favorites.filter(f => f !== url);
+        } else {
+          favorites.push(url);
+        }
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        filterAndRender();
+      }
+    });
+
+    // Listeners
+    searchInput.addEventListener('input', filterAndRender);
+    categoryFilter.addEventListener('change', filterAndRender);
+
+    loadM3U();
   </script>
+
 </body>
 </html>
