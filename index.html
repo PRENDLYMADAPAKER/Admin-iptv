@@ -4,6 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPTV Premium</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css" />
   <style>
     body {
@@ -16,47 +17,55 @@
       display: flex;
       align-items: center;
       padding: 10px;
-      background: #1e1e1e;
+      background: #1f1f1f;
     }
     header img {
       height: 40px;
       margin-right: 10px;
     }
     header h1 {
-      margin: 0;
       font-size: 20px;
     }
-    .player-container {
-      position: relative;
+    #player {
       width: 100%;
-      max-height: 360px;
+      height: 300px;
+      background: black;
     }
-    video {
-      width: 100%;
-      max-height: 100%;
-    }
-    .channel-grid {
+    .channel-list {
       display: flex;
       overflow-x: auto;
       padding: 10px;
     }
     .channel-tile {
-      min-width: 120px;
+      background: #2a2a2a;
       margin-right: 10px;
-      background: #222;
-      border-radius: 8px;
       padding: 10px;
       cursor: pointer;
+      border-radius: 8px;
+      width: 150px;
     }
-    .channel-tile:hover {
-      background: #444;
+    .favorites {
+      margin: 10px;
     }
-    .favorites-toggle {
-      margin-left: auto;
-      margin-right: 20px;
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
     }
-    .theme-toggle {
-      margin-left: 10px;
+    #nowPlaying {
+      padding: 5px 10px;
+      background: #1f1f1f;
+    }
+    .mini-player {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      width: 200px;
+      height: 120px;
+      z-index: 1000;
+    }
+    .theme-toggle, .cast-placeholder {
+      cursor: pointer;
     }
   </style>
 </head>
@@ -64,77 +73,123 @@
   <header>
     <img src="logo.png" alt="Logo">
     <h1>IPTV Premium</h1>
-    <button class="favorites-toggle">❤️ Favorites</button>
+  </header>  <div id="nowPlaying">Now Playing: <span id="currentChannel">N/A</span></div>
+  <video id="player" controls autoplay></video>  <div class="controls">
     <button class="theme-toggle">🌓 Theme</button>
-  </header>  <div class="player-container">
-    <video id="player" controls autoplay></video>
-  </div>  <div class="channel-grid" id="channelGrid">
-    <!-- Dynamically loaded channels -->
-  </div>  <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>  <script>
+    <button class="cast-placeholder">📺 Chromecast</button>
+  </div>  <div class="favorites">
+    <h3>Favorites</h3>
+    <div id="favoritesContainer" class="channel-list"></div>
+  </div>  <div>
+    <h3>All Channels</h3>
+    <div id="channelContainer" class="channel-list"></div>
+  </div>  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>  <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>  <script>
+    const m3uUrl = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u';
+    const epgUrl = 'https://tinyurl.com/DrewLive002-epg';
+
     const player = document.getElementById('player');
-    const grid = document.getElementById('channelGrid');
-    const favoritesToggle = document.querySelector('.favorites-toggle');
-    const themeToggle = document.querySelector('.theme-toggle');
-    const channels = [
-      { id: 1, name: "Channel 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
-      { id: 2, name: "Channel 2", url: "https://test-streams.mux.dev/test_001/stream.m3u8" },
-      { id: 3, name: "Channel 3", url: "https://test-streams.mux.dev/bbb/stream.m3u8" },
-    ];
+    const channelContainer = document.getElementById('channelContainer');
+    const favoritesContainer = document.getElementById('favoritesContainer');
+    const currentChannelLabel = document.getElementById('currentChannel');
 
-    let currentChannel = localStorage.getItem('lastChannel') || channels[0].url;
-    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    let channels = [];
+    let currentIndex = 0;
 
-    function loadChannels(showFavorites = false) {
-      grid.innerHTML = '';
-      (showFavorites ? channels.filter(c => favorites.includes(c.id)) : channels)
-        .forEach(channel => {
-          const div = document.createElement('div');
-          div.className = 'channel-tile';
-          div.innerText = channel.name;
-          div.onclick = () => playChannel(channel);
-          grid.appendChild(div);
+    function parseM3U(data) {
+      const lines = data.split('\n');
+      const parsed = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('#EXTINF')) {
+          const title = lines[i].split(',')[1];
+          const url = lines[i + 1];
+          parsed.push({ title, url });
+        }
+      }
+      return parsed;
+    }
+
+    function loadChannels() {
+      fetch(m3uUrl)
+        .then(res => res.text())
+        .then(text => {
+          channels = parseM3U(text);
+          renderChannels();
+          resumeLastPlayed();
         });
     }
 
-    function playChannel(channel) {
-      player.src = channel.url;
-      localStorage.setItem('lastChannel', channel.url);
-      addToHistory(channel);
+    function renderChannels() {
+      channelContainer.innerHTML = '';
+      favoritesContainer.innerHTML = '';
+      channels.forEach((channel, index) => {
+        const tile = document.createElement('div');
+        tile.className = 'channel-tile';
+        tile.innerHTML = `<strong>${channel.title}</strong>`;
+        tile.onclick = () => playChannel(index);
+        channelContainer.appendChild(tile);
+
+        if (isFavorite(channel.title)) {
+          const favTile = tile.cloneNode(true);
+          favTile.onclick = () => playChannel(index);
+          favoritesContainer.appendChild(favTile);
+        }
+      });
     }
 
-    function addToHistory(channel) {
-      let history = JSON.parse(localStorage.getItem('watchHistory')) || [];
-      history.push({ id: channel.id, name: channel.name, time: new Date().toISOString() });
-      localStorage.setItem('watchHistory', JSON.stringify(history));
-    }
-
-    favoritesToggle.onclick = () => {
-      const showFavs = favoritesToggle.innerText.includes('❤️');
-      favoritesToggle.innerText = showFavs ? 'All Channels' : '❤️ Favorites';
-      loadChannels(showFavs);
-    };
-
-    themeToggle.onclick = () => {
-      const dark = document.body.style.backgroundColor === 'white';
-      document.body.style.backgroundColor = dark ? '#121212' : 'white';
-      document.body.style.color = dark ? 'white' : 'black';
-    };
-
-    // Resume last played
-    player.src = currentChannel;
-
-    // Swipe left/right for channels
-    document.addEventListener('keydown', e => {
-      let index = channels.findIndex(c => c.url === player.src);
-      if (e.key === 'ArrowRight') {
-        let next = (index + 1) % channels.length;
-        playChannel(channels[next]);
-      } else if (e.key === 'ArrowLeft') {
-        let prev = (index - 1 + channels.length) % channels.length;
-        playChannel(channels[prev]);
+    function playChannel(index) {
+      const channel = channels[index];
+      currentIndex = index;
+      currentChannelLabel.textContent = channel.title;
+      localStorage.setItem('lastChannel', index);
+      addToHistory(channel.title);
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(channel.url);
+        hls.attachMedia(player);
+      } else {
+        player.src = channel.url;
       }
-    });
+    }
+
+    function isFavorite(title) {
+      const favs = JSON.parse(localStorage.getItem('favorites') || '[]');
+      return favs.includes(title);
+    }
+
+    function addToFavorites(title) {
+      let favs = JSON.parse(localStorage.getItem('favorites') || '[]');
+      if (!favs.includes(title)) {
+        favs.push(title);
+        localStorage.setItem('favorites', JSON.stringify(favs));
+      }
+    }
+
+    function addToHistory(title) {
+      let history = JSON.parse(localStorage.getItem('history') || '[]');
+      history.unshift({ title, time: Date.now() });
+      localStorage.setItem('history', JSON.stringify(history.slice(0, 20)));
+    }
+
+    function resumeLastPlayed() {
+      const last = localStorage.getItem('lastChannel');
+      if (last) {
+        playChannel(parseInt(last));
+      }
+    }
+
+    document.querySelector('.theme-toggle').onclick = () => {
+      document.body.classList.toggle('light');
+    };
+
+    document.onkeydown = (e) => {
+      if (e.key === 'ArrowRight') playChannel((currentIndex + 1) % channels.length);
+      if (e.key === 'ArrowLeft') playChannel((currentIndex - 1 + channels.length) % channels.length);
+      if (e.key === 'f') player.requestFullscreen();
+      if (e.key === 'm') player.muted = !player.muted;
+      if (e.key === ' ') player.paused ? player.play() : player.pause();
+    };
 
     loadChannels();
+    setInterval(loadChannels, 15 * 60 * 1000); // Auto refresh every 15 min
   </script></body>
 </html>
