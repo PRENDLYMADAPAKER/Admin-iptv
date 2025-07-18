@@ -14,6 +14,7 @@
     header {
       background: black;
       padding: 10px;
+      text-align: center;
     }
     header img {
       height: 40px;
@@ -41,41 +42,46 @@
       border: none;
       outline: none;
     }
-    #channelList {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 10px;
-      padding: 10px;
+    #carouselWrapper {
+      overflow: hidden;
+      position: relative;
+      height: 250px;
+    }
+    #carousel {
+      display: flex;
+      transition: transform 0.5s ease-in-out;
+      will-change: transform;
     }
     .channel {
-      background: #1e1e1e;
-      border-radius: 12px;
-      padding: 10px;
+      min-width: 100%;
+      box-sizing: border-box;
+      padding: 20px;
       text-align: center;
+      background: #1e1e1e;
+      border-radius: 16px;
       position: relative;
     }
     .channel img {
       width: 100%;
-      height: 100px;
+      max-height: 120px;
       object-fit: contain;
-      margin-bottom: 5px;
+      margin-bottom: 10px;
     }
     .channel button {
-      margin-top: 5px;
-      padding: 5px 10px;
+      padding: 8px 16px;
       background: #333;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
     }
     .fav-btn {
       position: absolute;
-      top: 5px;
-      right: 10px;
+      top: 10px;
+      right: 15px;
       background: transparent;
       color: gold;
-      font-size: 18px;
+      font-size: 20px;
       border: none;
       cursor: pointer;
     }
@@ -95,26 +101,26 @@
   <input type="text" id="searchBar" placeholder="Search channels...">
   <select id="categoryFilter"></select>
 
-  <div id="channelList"></div>
+  <div id="carouselWrapper">
+    <div id="carousel"></div>
+  </div>
 
   <script>
     let channels = [];
-    let currentIndex = 0;
     let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    let currentIndex = 0;
     let groupList = [];
-    let currentPage = 0;
-    const itemsPerPage = 8;
 
     async function fetchM3U() {
       const res = await fetch("https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u");
       const text = await res.text();
-      const lines = text.split("\n");
+      const lines = text.split("\\n");
       let current = {};
       for (let line of lines) {
         if (line.startsWith("#EXTINF")) {
           const name = line.split(",").pop();
-          const logoMatch = line.match(/tvg-logo="(.*?)"/);
-          const groupMatch = line.match(/group-title="(.*?)"/);
+          const logoMatch = line.match(/tvg-logo=\"(.*?)\"/);
+          const groupMatch = line.match(/group-title=\"(.*?)\"/);
           current = {
             name,
             logo: logoMatch ? logoMatch[1] : '',
@@ -149,14 +155,10 @@
     }
 
     function renderChannels() {
-      const list = document.getElementById("channelList");
+      const list = document.getElementById("carousel");
       list.innerHTML = "";
-
       const filtered = getFilteredChannels();
-      const start = currentPage * itemsPerPage;
-      const pageItems = filtered.slice(start, start + itemsPerPage);
-
-      pageItems.forEach((ch, i) => {
+      filtered.forEach((ch, i) => {
         const idx = channels.indexOf(ch);
         const div = document.createElement("div");
         div.className = "channel";
@@ -170,6 +172,12 @@
         `;
         list.appendChild(div);
       });
+      updateCarousel();
+    }
+
+    function updateCarousel() {
+      const carousel = document.getElementById("carousel");
+      carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
     }
 
     function toggleFavorite(index) {
@@ -190,31 +198,31 @@
       const video = document.getElementById("videoPlayer");
       video.src = ch.url;
       document.getElementById("nowTitle").textContent = ch.name;
+      updateCarousel();
     }
 
-    document.getElementById("searchBar").addEventListener("input", () => { currentPage = 0; renderChannels(); });
-    document.getElementById("categoryFilter").addEventListener("change", () => { currentPage = 0; renderChannels(); });
+    document.getElementById("searchBar").addEventListener("input", () => { currentIndex = 0; renderChannels(); });
+    document.getElementById("categoryFilter").addEventListener("change", () => { currentIndex = 0; renderChannels(); });
 
+    // Swipe support
     let startX = 0;
-    const channelList = document.getElementById("channelList");
+    const wrapper = document.getElementById("carouselWrapper");
 
-    channelList.addEventListener("touchstart", (e) => {
+    wrapper.addEventListener("touchstart", (e) => {
       startX = e.touches[0].clientX;
     });
 
-    channelList.addEventListener("touchend", (e) => {
+    wrapper.addEventListener("touchend", (e) => {
       const endX = e.changedTouches[0].clientX;
-      const diffX = endX - startX;
+      const deltaX = endX - startX;
       const filtered = getFilteredChannels();
-      const maxPages = Math.ceil(filtered.length / itemsPerPage);
-
-      if (Math.abs(diffX) > 50) {
-        if (diffX < 0 && currentPage < maxPages - 1) {
-          currentPage++;
-        } else if (diffX > 0 && currentPage > 0) {
-          currentPage--;
+      if (Math.abs(deltaX) > 50) {
+        if (deltaX < 0 && currentIndex < filtered.length - 1) {
+          currentIndex++;
+        } else if (deltaX > 0 && currentIndex > 0) {
+          currentIndex--;
         }
-        renderChannels();
+        updateCarousel();
       }
     });
 
