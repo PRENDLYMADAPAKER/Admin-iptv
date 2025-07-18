@@ -45,11 +45,11 @@
     #carouselWrapper {
       overflow: hidden;
       position: relative;
-      height: 250px;
+      height: 270px;
     }
     #carousel {
       display: flex;
-      transition: transform 0.5s ease-in-out;
+      transition: transform 0.4s ease-in-out;
       will-change: transform;
     }
     .channel {
@@ -62,7 +62,7 @@
       position: relative;
     }
     .channel img {
-      width: 100%;
+      width: 100px;
       max-height: 120px;
       object-fit: contain;
       margin-bottom: 10px;
@@ -106,21 +106,21 @@
   </div>
 
   <script>
-    let channels = [];
+    let allChannels = [];
     let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    let filteredChannels = [];
     let currentIndex = 0;
-    let groupList = [];
 
     async function fetchM3U() {
       const res = await fetch("https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u");
       const text = await res.text();
-      const lines = text.split("\\n");
+      const lines = text.split("\n");
       let current = {};
       for (let line of lines) {
         if (line.startsWith("#EXTINF")) {
           const name = line.split(",").pop();
-          const logoMatch = line.match(/tvg-logo=\"(.*?)\"/);
-          const groupMatch = line.match(/group-title=\"(.*?)\"/);
+          const logoMatch = line.match(/tvg-logo="(.*?)"/);
+          const groupMatch = line.match(/group-title="(.*?)"/);
           current = {
             name,
             logo: logoMatch ? logoMatch[1] : '',
@@ -128,47 +128,50 @@
           };
         } else if (line.startsWith("http")) {
           current.url = line;
-          channels.push({ ...current });
+          allChannels.push({ ...current });
         }
       }
       renderCategories();
-      renderChannels();
+      applyFilters();
       playChannel(0);
     }
 
     function renderCategories() {
       const filter = document.getElementById("categoryFilter");
-      groupList = [...new Set(channels.map(c => c.group))];
+      const groupList = [...new Set(allChannels.map(c => c.group))];
       filter.innerHTML = '<option value="All">All</option><option value="Favorites">Favorites</option>' +
         groupList.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
-    function getFilteredChannels() {
+    function applyFilters() {
       const search = document.getElementById("searchBar").value.toLowerCase();
       const category = document.getElementById("categoryFilter").value;
-      return channels.filter((ch, i) => {
+
+      filteredChannels = allChannels.filter((ch, i) => {
         const isFav = favorites.includes(i);
         if (category === "Favorites" && !isFav) return false;
         if (category !== "All" && category !== "Favorites" && ch.group !== category) return false;
         return ch.name.toLowerCase().includes(search);
       });
+
+      currentIndex = 0;
+      renderChannels();
     }
 
     function renderChannels() {
       const list = document.getElementById("carousel");
       list.innerHTML = "";
-      const filtered = getFilteredChannels();
-      filtered.forEach((ch, i) => {
-        const idx = channels.indexOf(ch);
+      filteredChannels.forEach((ch, idx) => {
+        const globalIndex = allChannels.indexOf(ch);
         const div = document.createElement("div");
         div.className = "channel";
         div.innerHTML = `
-          <button class="fav-btn" onclick="toggleFavorite(${idx})">
-            ${favorites.includes(idx) ? '★' : '☆'}
+          <button class="fav-btn" onclick="toggleFavorite(${globalIndex})">
+            ${favorites.includes(globalIndex) ? '★' : '☆'}
           </button>
           <img src="${ch.logo}" alt="logo">
           <div>${ch.name}</div>
-          <button onclick="playChannel(${idx})">Play</button>
+          <button onclick="playChannelFromFiltered(${idx})">Play</button>
         `;
         list.appendChild(div);
       });
@@ -188,21 +191,18 @@
         favorites.push(index);
       }
       localStorage.setItem('favorites', JSON.stringify(favorites));
-      renderChannels();
+      applyFilters();
     }
 
-    function playChannel(index) {
-      const ch = channels[index];
+    function playChannelFromFiltered(filteredIndex) {
+      const ch = filteredChannels[filteredIndex];
       if (!ch) return;
-      currentIndex = index;
       const video = document.getElementById("videoPlayer");
       video.src = ch.url;
       document.getElementById("nowTitle").textContent = ch.name;
+      currentIndex = filteredIndex;
       updateCarousel();
     }
-
-    document.getElementById("searchBar").addEventListener("input", () => { currentIndex = 0; renderChannels(); });
-    document.getElementById("categoryFilter").addEventListener("change", () => { currentIndex = 0; renderChannels(); });
 
     // Swipe support
     let startX = 0;
@@ -215,9 +215,8 @@
     wrapper.addEventListener("touchend", (e) => {
       const endX = e.changedTouches[0].clientX;
       const deltaX = endX - startX;
-      const filtered = getFilteredChannels();
       if (Math.abs(deltaX) > 50) {
-        if (deltaX < 0 && currentIndex < filtered.length - 1) {
+        if (deltaX < 0 && currentIndex < filteredChannels.length - 1) {
           currentIndex++;
         } else if (deltaX > 0 && currentIndex > 0) {
           currentIndex--;
@@ -225,6 +224,9 @@
         updateCarousel();
       }
     });
+
+    document.getElementById("searchBar").addEventListener("input", applyFilters);
+    document.getElementById("categoryFilter").addEventListener("change", applyFilters);
 
     fetchM3U();
   </script>
