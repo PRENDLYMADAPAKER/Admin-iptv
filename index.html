@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,88 +7,79 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css" />
   <style>
+    :root {
+      --primary-color: #1e88e5;
+      --bg-color: #121212;
+      --text-color: #ffffff;
+      --card-bg: #1e1e1e;
+    }
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: white;
+      background-color: var(--bg-color);
+      color: var(--text-color);
     }
     header {
       display: flex;
       align-items: center;
+      gap: 10px;
       padding: 10px;
-      background: #1f1f1f;
+      background-color: #000;
     }
     header img {
       height: 40px;
-      margin-right: 10px;
     }
     header h1 {
-      font-size: 1.5rem;
+      font-size: 1.5em;
     }
-    #player-container {
-      position: relative;
-      width: 100%;
-      max-height: 55vh;
-      background: black;
-    }
-    video {
-      width: 100%;
-      height: 100%;
-    }
-    #channel-list {
+    #channel-container {
       display: flex;
-      overflow-x: auto;
+      flex-wrap: wrap;
+      gap: 10px;
       padding: 10px;
     }
     .channel {
-      flex: 0 0 auto;
-      width: 120px;
-      margin-right: 10px;
-      background: #1f1f1f;
-      border-radius: 8px;
-      padding: 5px;
-      text-align: center;
+      width: 140px;
+      background-color: var(--card-bg);
+      padding: 10px;
+      border-radius: 10px;
+      cursor: pointer;
     }
     .channel img {
       width: 100%;
       border-radius: 5px;
     }
-    .channel-name {
-      font-size: 0.85rem;
+    .channel h4 {
+      margin: 5px 0 0;
+      font-size: 0.9em;
     }
-    #now-playing {
-      padding: 10px;
-      background: #222;
+    .fav {
+      color: gold;
+    }
+    .now-playing {
       display: flex;
       align-items: center;
+      background: #333;
+      padding: 10px;
+      gap: 10px;
     }
-    #now-playing img {
-      width: 40px;
-      height: 40px;
-      margin-right: 10px;
+    .now-playing img {
+      width: 60px;
+      border-radius: 5px;
+    }
+    #video-player {
+      width: 100%;
+      max-height: 60vh;
+      background: black;
     }
     #controls {
       display: flex;
       justify-content: space-between;
       padding: 10px;
-      background: #1f1f1f;
+      background: #222;
     }
-    #controls button {
+    button, select, input[type="search"] {
       margin-right: 10px;
-    }
-    #search-bar {
-      width: 100%;
-      padding: 10px;
-      font-size: 1rem;
-      border: none;
-      outline: none;
-    }
-    #favorites, #history, #categories {
-      padding: 10px;
-    }
-    .theme-toggle {
-      cursor: pointer;
     }
   </style>
 </head>
@@ -97,132 +87,94 @@
   <header>
     <img src="logo.png" alt="Logo" />
     <h1>IPTV Premium</h1>
-  </header>
-
-  <div id="player-container">
-    <video id="player" controls autoplay></video>
-  </div>
-
-  <div id="now-playing">
-    <img id="now-icon" src="" alt="" />
-    <div id="now-title">Now Playing: -</div>
-  </div>
-
-  <input type="text" id="search-bar" placeholder="Search channels..." />
+  </header>  <div class="now-playing" id="now-playing">
+    <img src="placeholder.png" alt="Now Playing Icon" id="now-icon">
+    <div>
+      <h3 id="now-title">Now Playing</h3>
+      <p id="now-epg">Program info</p>
+    </div>
+  </div><video id="video-player" controls autoplay muted playsinline></video>
 
   <div id="controls">
-    <button onclick="toggleFavoritesView()">Favorites</button>
     <button onclick="toggleDarkMode()">🌓 Theme</button>
-    <button onclick="toggleChromecast()">📺 Cast</button>
-  </div>
+    <button onclick="toggleFavView()">⭐ Favorites</button>
+    <button onclick="toggleCast()">📺 Chromecast</button>
+    <input type="search" placeholder="Search..." oninput="searchChannels(this.value)" />
+    <select onchange="sortChannels(this.value)">
+      <option value="az">Sort A-Z</option>
+      <option value="most">Most Watched</option>
+    </select>
+  </div>  <div id="channel-container"></div>  <script>
+    const channels = [
+      { name: 'Channel 1', logo: 'ch1.png', url: 'http://example.com/stream1.m3u8', group: 'News' },
+      { name: 'Channel 2', logo: 'ch2.png', url: 'http://example.com/stream2.m3u8', group: 'Movies' }
+    ];
 
-  <div id="channel-list"></div>
-  <div id="epg"></div>
+    let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    let currentIndex = 0;
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script>
-    const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
-    const epgUrl = "https://tinyurl.com/DrewLive002-epg";
-
-    let channels = [], favorites = JSON.parse(localStorage.getItem("favorites") || "[]"),
-        history = JSON.parse(localStorage.getItem("watchHistory") || "[]"), currentIndex = 0;
-
-    const player = document.getElementById("player");
-    const nowTitle = document.getElementById("now-title");
-    const nowIcon = document.getElementById("now-icon");
-
-    function fetchM3U() {
-      fetch(m3uUrl).then(res => res.text()).then(parseM3U);
-    }
-
-    function parseM3U(data) {
-      const lines = data.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith("#EXTINF")) {
-          const title = lines[i].split(",").pop().trim();
-          const logo = /tvg-logo="(.*?)"/.exec(lines[i])?.[1] || "";
-          const url = lines[i + 1]?.trim();
-          if (url) channels.push({ title, url, logo });
-        }
-      }
-      renderChannels();
-      restoreLastChannel();
-    }
-
-    function renderChannels() {
-      const list = document.getElementById("channel-list");
-      list.innerHTML = "";
-      channels.forEach((ch, i) => {
-        const div = document.createElement("div");
-        div.className = "channel";
-        div.innerHTML = `<img src="${ch.logo}"/><div class="channel-name">${ch.title}</div>`;
-        div.onclick = () => playChannel(i);
-        list.appendChild(div);
+    function renderChannels(list = channels) {
+      const container = document.getElementById('channel-container');
+      container.innerHTML = '';
+      list.forEach((ch, i) => {
+        const card = document.createElement('div');
+        card.className = 'channel';
+        card.innerHTML = `
+          <img src="${ch.logo}" />
+          <h4>${ch.name} ${favorites.includes(ch.name) ? '⭐' : ''}</h4>
+        `;
+        card.onclick = () => playChannel(i);
+        container.appendChild(card);
       });
     }
 
     function playChannel(index) {
-      currentIndex = index;
       const ch = channels[index];
-      player.src = ch.url;
-      nowTitle.textContent = `Now Playing: ${ch.title}`;
-      nowIcon.src = ch.logo;
-      localStorage.setItem("lastPlayed", index);
-      addToHistory(ch);
-    }
-
-    function restoreLastChannel() {
-      const last = localStorage.getItem("lastPlayed");
-      if (last !== null) playChannel(parseInt(last));
-    }
-
-    function addToHistory(ch) {
-      history.unshift(ch);
-      history = history.slice(0, 10);
-      localStorage.setItem("watchHistory", JSON.stringify(history));
-    }
-
-    function toggleFavoritesView() {
-      const favs = channels.filter(ch => favorites.includes(ch.title));
-      const list = document.getElementById("channel-list");
-      list.innerHTML = "";
-      favs.forEach((ch, i) => {
-        const div = document.createElement("div");
-        div.className = "channel";
-        div.innerHTML = `<img src="${ch.logo}"/><div class="channel-name">${ch.title}</div>`;
-        div.onclick = () => playChannel(channels.indexOf(ch));
-        list.appendChild(div);
-      });
+      document.getElementById('video-player').src = ch.url;
+      document.getElementById('now-title').innerText = ch.name;
+      document.getElementById('now-icon').src = ch.logo;
+      document.getElementById('now-epg').innerText = 'Live show or EPG info';
+      localStorage.setItem('lastChannel', index);
+      currentIndex = index;
     }
 
     function toggleDarkMode() {
-      const isDark = document.body.style.backgroundColor === "#121212";
-      document.body.style.backgroundColor = isDark ? "#ffffff" : "#121212";
-      document.body.style.color = isDark ? "#000000" : "#ffffff";
+      document.body.classList.toggle('light');
     }
 
-    function toggleChromecast() {
-      alert("Chromecast placeholder. Integrate Cast SDK to enable this feature.");
+    function toggleFavView() {
+      const onlyFavs = channels.filter(c => favorites.includes(c.name));
+      renderChannels(onlyFavs.length ? onlyFavs : channels);
     }
 
-    document.getElementById("search-bar").addEventListener("input", e => {
-      const keyword = e.target.value.toLowerCase();
-      const filtered = channels.filter(ch => ch.title.toLowerCase().includes(keyword));
-      const list = document.getElementById("channel-list");
-      list.innerHTML = "";
-      filtered.forEach((ch, i) => {
-        const div = document.createElement("div");
-        div.className = "channel";
-        div.innerHTML = `<img src="${ch.logo}"/><div class="channel-name">${ch.title}</div>`;
-        div.onclick = () => playChannel(channels.indexOf(ch));
-        list.appendChild(div);
-      });
+    function toggleCast() {
+      alert('Chromecast integration coming soon');
+    }
+
+    function sortChannels(type) {
+      let sorted;
+      if (type === 'az') {
+        sorted = [...channels].sort((a, b) => a.name.localeCompare(b.name));
+      } else if (type === 'most') {
+        sorted = channels; // mock logic
+      }
+      renderChannels(sorted);
+    }
+
+    function searchChannels(term) {
+      const result = channels.filter(c => c.name.toLowerCase().includes(term.toLowerCase()));
+      renderChannels(result);
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') playChannel((currentIndex + 1) % channels.length);
+      if (e.key === 'ArrowLeft') playChannel((currentIndex - 1 + channels.length) % channels.length);
     });
 
-    setInterval(fetchM3U, 900000); // Auto-refresh every 15 minutes
-
-    fetchM3U();
-  </script>
-</body>
+    window.onload = () => {
+      renderChannels();
+      const last = localStorage.getItem('lastChannel');
+      if (last !== null) playChannel(Number(last));
+    }
+  </script></body>
 </html>
