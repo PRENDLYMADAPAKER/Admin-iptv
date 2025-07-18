@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPTV Premium</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #141414;
+      color: white;
+      overflow-x: hidden;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      background-color: #000;
+    }
+    header img {
+      height: 40px;
+    }
+    #video-container {
+      position: sticky;
+      top: 0;
+      background: black;
+      z-index: 10;
+    }
+    video {
+      width: 100%;
+      height: auto;
+    }
+    #searchBar, #categoryFilter {
+      width: 100%;
+      padding: 10px;
+      background: #222;
+      color: white;
+      border: none;
+      margin-bottom: 5px;
+    }
+    .channel {
+      display: inline-block;
+      width: 45%;
+      margin: 2.5%;
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .channel img {
+      width: 100%;
+      height: 100px;
+      object-fit: contain;
+    }
+    #nowPlaying {
+      background: #333;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #epg {
+      padding: 10px;
+      background: #111;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://raw.githubusercontent.com/PRENDLYMADAPAKER/IPTV-Premium-Web/main/logo.png" alt="IPTV Premium">
+  </header>
+  <div id="video-container">
+    <video id="videoPlayer" controls autoplay></video>
+  </div>
+  <div id="nowPlaying">Now Playing: <span id="nowTitle"></span></div>
+  <div id="epg">Schedule: <ul id="epgList"></ul></div>
+  <input type="text" id="searchBar" placeholder="Search channels...">
+  <select id="categoryFilter"></select>
+  <div id="channelList"></div>
+
+  <script>
+    let channels = [];
+    let currentIndex = 0;
+
+    async function fetchM3U() {
+      const res = await fetch("https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u");
+      const text = await res.text();
+      const lines = text.split("\n");
+      let current = {};
+      for (let line of lines) {
+        if (line.startsWith("#EXTINF")) {
+          const name = line.split(",").pop();
+          const logoMatch = line.match(/tvg-logo="(.*?)"/);
+          const groupMatch = line.match(/group-title="(.*?)"/);
+          current = {
+            name,
+            logo: logoMatch ? logoMatch[1] : '',
+            group: groupMatch ? groupMatch[1] : 'Others'
+          };
+        } else if (line.startsWith("http")) {
+          current.url = line;
+          channels.push({...current});
+        }
+      }
+      renderChannels();
+      renderCategories();
+      playChannel(0);
+    }
+
+    function renderChannels() {
+      const search = document.getElementById("searchBar").value.toLowerCase();
+      const category = document.getElementById("categoryFilter").value;
+      const list = document.getElementById("channelList");
+      list.innerHTML = "";
+      channels.forEach((ch, i) => {
+        if ((ch.name.toLowerCase().includes(search)) && (category === "All" || ch.group === category)) {
+          const div = document.createElement("div");
+          div.className = "channel";
+          div.innerHTML = `
+            <img src="${ch.logo}" alt="logo">
+            <div>${ch.name}</div>
+            <button onclick="playChannel(${i})">Play</button>
+          `;
+          list.appendChild(div);
+        }
+      });
+    }
+
+    function renderCategories() {
+      const filter = document.getElementById("categoryFilter");
+      const categories = [...new Set(channels.map(c => c.group))];
+      filter.innerHTML = '<option value="All">All</option>' + categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+    }
+
+    function playChannel(index) {
+      const ch = channels[index];
+      if (!ch) return;
+      currentIndex = index;
+      document.getElementById("videoPlayer").src = ch.url;
+      document.getElementById("nowTitle").textContent = ch.name;
+      updateEPG(ch.name);
+    }
+
+    function updateEPG(channelName) {
+      const now = new Date();
+      const epgList = document.getElementById("epgList");
+      epgList.innerHTML = "";
+      for (let i = 0; i < 5; i++) {
+        const itemTime = new Date(now.getTime() + i * 30 * 60000);
+        const timeStr = itemTime.toTimeString().slice(0, 5);
+        const li = document.createElement("li");
+        li.textContent = `${timeStr} - ${channelName} Show ${i + 1}`;
+        epgList.appendChild(li);
+      }
+    }
+
+    document.getElementById("searchBar").addEventListener("input", renderChannels);
+    document.getElementById("categoryFilter").addEventListener("change", renderChannels);
+
+    document.addEventListener("touchstart", handleTouchStart, false);
+    document.addEventListener("touchend", handleTouchEnd, false);
+
+    let xDown = null;
+    function handleTouchStart(evt) {
+      xDown = evt.touches[0].clientX;
+    }
+    function handleTouchEnd(evt) {
+      if (!xDown) return;
+      const xUp = evt.changedTouches[0].clientX;
+      const diff = xDown - xUp;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) currentIndex++;
+        else currentIndex--;
+        if (currentIndex < 0) currentIndex = channels.length - 1;
+        if (currentIndex >= channels.length) currentIndex = 0;
+        playChannel(currentIndex);
+      }
+      xDown = null;
+    }
+
+    fetchM3U();
+  </script>
+</body>
+</html>
