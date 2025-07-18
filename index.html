@@ -7,7 +7,7 @@
   <style>
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: sans-serif;
       background-color: #111;
       color: #fff;
     }
@@ -18,11 +18,10 @@
       padding: 10px;
       background-color: #000;
       justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     }
 
     header img {
-      height: 45px;
+      height: 40px;
     }
 
     #player {
@@ -32,20 +31,12 @@
     }
 
     .now-playing {
-      background: #1a1a1a;
+      background: #222;
       padding: 10px;
       font-weight: bold;
       display: flex;
       align-items: center;
       gap: 10px;
-      border-top: 1px solid #333;
-    }
-
-    .epg-guide {
-      padding: 10px;
-      background: #222;
-      font-size: 14px;
-      border-bottom: 1px solid #333;
     }
 
     .controls {
@@ -81,7 +72,7 @@
 
     .channel {
       background: #222;
-      border-radius: 16px;
+      border-radius: 10px;
       padding: 10px;
       width: 45%;
       cursor: pointer;
@@ -89,8 +80,7 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-      transition: transform 0.2s ease;
+      transition: transform 0.2s;
     }
 
     .channel img {
@@ -135,7 +125,6 @@
   <video id="player" controls autoplay muted></video>
 
   <div class="now-playing" id="nowPlaying">Now Playing: </div>
-  <div class="epg-guide" id="epgGuide">Loading TV guide...</div>
 
   <div class="controls">
     <select id="categoryFilter">
@@ -151,11 +140,8 @@
 
   <script>
     const m3uUrl = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u';
-    const epgUrl = 'https://tinyurl.com/DrewLive002-epg';
-
     const player = document.getElementById('player');
     const nowPlaying = document.getElementById('nowPlaying');
-    const epgGuide = document.getElementById('epgGuide');
     const channelGrid = document.getElementById('channelGrid');
     const categoryFilter = document.getElementById('categoryFilter');
     const searchInput = document.getElementById('searchInput');
@@ -164,36 +150,6 @@
     let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
     let currentPage = 0;
     let pages = [];
-    let epgData = {};
-
-    async function loadEPG() {
-      try {
-        const res = await fetch(epgUrl);
-        const xml = await res.text();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xml, 'application/xml');
-        const entries = xmlDoc.querySelectorAll('programme');
-        entries.forEach(p => {
-          const channel = p.getAttribute('channel');
-          const title = p.querySelector('title')?.textContent || '';
-          const start = p.getAttribute('start');
-          if (!epgData[channel]) epgData[channel] = [];
-          epgData[channel].push({ title, start });
-        });
-      } catch (err) {
-        epgGuide.textContent = 'EPG loading failed.';
-      }
-    }
-
-    function showEPG(channelName) {
-      const guide = epgData[channelName] || [];
-      if (guide.length === 0) {
-        epgGuide.textContent = 'No guide info available.';
-      } else {
-        const now = guide.slice(0, 3).map(p => `• ${p.title}`).join('<br>');
-        epgGuide.innerHTML = now;
-      }
-    }
 
     function parseM3U(text) {
       const lines = text.split('\n');
@@ -204,8 +160,7 @@
           const match = line.match(/group-title="(.*?)"/);
           const group = match ? match[1] : 'Other';
           const logo = line.match(/tvg-logo="(.*?)"/)?.[1] || '';
-          const tvg = line.match(/tvg-id="(.*?)"/)?.[1] || name;
-          current = { name, group, logo, tvg };
+          current = { name, group, logo };
         } else if (line.startsWith('http')) {
           current.url = line.trim();
           channels.push({ ...current });
@@ -282,7 +237,6 @@
     function playChannel(ch) {
       player.src = ch.url;
       nowPlaying.innerHTML = `<img src="${ch.logo}" height="20"/> Now Playing: ${ch.name}`;
-      showEPG(ch.tvg || ch.name);
     }
 
     function updatePage() {
@@ -303,18 +257,26 @@
       }
     }
 
+    // Swipe Support
     let touchStartX = 0;
     let touchEndX = 0;
+
     const swipeZone = document.getElementById('swipeZone');
     swipeZone.addEventListener('touchstart', e => {
       touchStartX = e.touches[0].clientX;
     });
+
     swipeZone.addEventListener('touchend', e => {
       touchEndX = e.changedTouches[0].clientX;
-      if (touchEndX < touchStartX - 50) nextPage();
-      if (touchEndX > touchStartX + 50) prevPage();
+      handleSwipe();
     });
 
+    function handleSwipe() {
+      if (touchEndX < touchStartX - 50) nextPage();
+      if (touchEndX > touchStartX + 50) prevPage();
+    }
+
+    // Favorite toggle
     document.addEventListener('click', e => {
       if (e.target.classList.contains('favorite')) {
         const url = e.target.dataset.url;
@@ -328,11 +290,12 @@
       }
     });
 
+    // Listeners
     searchInput.addEventListener('input', filterAndRender);
     categoryFilter.addEventListener('change', filterAndRender);
 
-    await loadEPG();
-    await loadM3U();
+    loadM3U();
   </script>
+
 </body>
 </html>
