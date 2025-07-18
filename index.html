@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Premium</title>
   <style>
     body {
@@ -10,13 +10,10 @@
       font-family: Arial, sans-serif;
       background-color: #141414;
       color: white;
-      overflow-x: hidden;
     }
     header {
-      display: flex;
-      align-items: center;
+      background: black;
       padding: 10px;
-      background-color: #000;
     }
     header img {
       height: 40px;
@@ -31,37 +28,56 @@
       width: 100%;
       height: auto;
     }
+    #nowPlaying {
+      padding: 10px;
+      background-color: #222;
+      font-size: 16px;
+    }
     #searchBar, #categoryFilter {
       width: 100%;
       padding: 10px;
       background: #222;
       color: white;
       border: none;
-      margin-bottom: 5px;
+      outline: none;
+    }
+    #channelList {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+      padding: 10px;
     }
     .channel {
-      display: inline-block;
-      width: 45%;
-      margin: 2.5%;
       background: #1e1e1e;
+      border-radius: 12px;
       padding: 10px;
-      border-radius: 10px;
       text-align: center;
+      position: relative;
     }
     .channel img {
       width: 100%;
       height: 100px;
       object-fit: contain;
+      margin-bottom: 5px;
     }
-    #nowPlaying {
+    .channel button {
+      margin-top: 5px;
+      padding: 5px 10px;
       background: #333;
-      padding: 10px;
-      font-size: 16px;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
-    #epg {
-      padding: 10px;
-      background: #111;
-      font-size: 14px;
+    .fav-btn {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      background: transparent;
+      color: gold;
+      font-size: 18px;
+      border: none;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -69,18 +85,22 @@
   <header>
     <img src="https://raw.githubusercontent.com/PRENDLYMADAPAKER/IPTV-Premium-Web/main/logo.png" alt="IPTV Premium">
   </header>
+
   <div id="video-container">
     <video id="videoPlayer" controls autoplay></video>
   </div>
+
   <div id="nowPlaying">Now Playing: <span id="nowTitle"></span></div>
-  <div id="epg">Schedule: <ul id="epgList"></ul></div>
+
   <input type="text" id="searchBar" placeholder="Search channels...">
   <select id="categoryFilter"></select>
+
   <div id="channelList"></div>
 
   <script>
     let channels = [];
     let currentIndex = 0;
+    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 
     async function fetchM3U() {
       const res = await fetch("https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u");
@@ -102,9 +122,16 @@
           channels.push({...current});
         }
       }
-      renderChannels();
       renderCategories();
+      renderChannels();
       playChannel(0);
+    }
+
+    function renderCategories() {
+      const filter = document.getElementById("categoryFilter");
+      const categories = [...new Set(channels.map(c => c.group))];
+      filter.innerHTML = '<option value="All">All</option><option value="Favorites">Favorites</option>' +
+        categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
     function renderChannels() {
@@ -112,71 +139,71 @@
       const category = document.getElementById("categoryFilter").value;
       const list = document.getElementById("channelList");
       list.innerHTML = "";
-      channels.forEach((ch, i) => {
-        if ((ch.name.toLowerCase().includes(search)) && (category === "All" || ch.group === category)) {
-          const div = document.createElement("div");
-          div.className = "channel";
-          div.innerHTML = `
-            <img src="${ch.logo}" alt="logo">
-            <div>${ch.name}</div>
-            <button onclick="playChannel(${i})">Play</button>
-          `;
-          list.appendChild(div);
-        }
+
+      const filtered = channels.filter((ch, i) => {
+        const isFav = favorites.includes(i);
+        if (category === "Favorites" && !isFav) return false;
+        if (category !== "All" && category !== "Favorites" && ch.group !== category) return false;
+        return ch.name.toLowerCase().includes(search);
+      });
+
+      filtered.forEach((ch, i) => {
+        const idx = channels.indexOf(ch);
+        const div = document.createElement("div");
+        div.className = "channel";
+        div.innerHTML = `
+          <button class="fav-btn" onclick="toggleFavorite(${idx})">
+            ${favorites.includes(idx) ? '★' : '☆'}
+          </button>
+          <img src="${ch.logo}" alt="logo">
+          <div>${ch.name}</div>
+          <button onclick="playChannel(${idx})">Play</button>
+        `;
+        list.appendChild(div);
       });
     }
 
-    function renderCategories() {
-      const filter = document.getElementById("categoryFilter");
-      const categories = [...new Set(channels.map(c => c.group))];
-      filter.innerHTML = '<option value="All">All</option>' + categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+    function toggleFavorite(index) {
+      const idx = favorites.indexOf(index);
+      if (idx >= 0) {
+        favorites.splice(idx, 1);
+      } else {
+        favorites.push(index);
+      }
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+      renderChannels();
     }
 
     function playChannel(index) {
       const ch = channels[index];
       if (!ch) return;
       currentIndex = index;
-      document.getElementById("videoPlayer").src = ch.url;
+      const video = document.getElementById("videoPlayer");
+      video.src = ch.url;
       document.getElementById("nowTitle").textContent = ch.name;
-      updateEPG(ch.name);
     }
 
-    function updateEPG(channelName) {
-      const now = new Date();
-      const epgList = document.getElementById("epgList");
-      epgList.innerHTML = "";
-      for (let i = 0; i < 5; i++) {
-        const itemTime = new Date(now.getTime() + i * 30 * 60000);
-        const timeStr = itemTime.toTimeString().slice(0, 5);
-        const li = document.createElement("li");
-        li.textContent = `${timeStr} - ${channelName} Show ${i + 1}`;
-        epgList.appendChild(li);
+    // Swipe gesture
+    const video = document.getElementById("videoPlayer");
+    let startX = 0;
+    video.addEventListener("touchstart", (e) => {
+      startX = e.touches[0].clientX;
+    });
+    video.addEventListener("touchend", (e) => {
+      let endX = e.changedTouches[0].clientX;
+      let diff = endX - startX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) {
+          currentIndex = (currentIndex + 1) % channels.length;
+        } else {
+          currentIndex = (currentIndex - 1 + channels.length) % channels.length;
+        }
+        playChannel(currentIndex);
       }
-    }
+    });
 
     document.getElementById("searchBar").addEventListener("input", renderChannels);
     document.getElementById("categoryFilter").addEventListener("change", renderChannels);
-
-    document.addEventListener("touchstart", handleTouchStart, false);
-    document.addEventListener("touchend", handleTouchEnd, false);
-
-    let xDown = null;
-    function handleTouchStart(evt) {
-      xDown = evt.touches[0].clientX;
-    }
-    function handleTouchEnd(evt) {
-      if (!xDown) return;
-      const xUp = evt.changedTouches[0].clientX;
-      const diff = xDown - xUp;
-      if (Math.abs(diff) > 50) {
-        if (diff > 0) currentIndex++;
-        else currentIndex--;
-        if (currentIndex < 0) currentIndex = channels.length - 1;
-        if (currentIndex >= channels.length) currentIndex = 0;
-        playChannel(currentIndex);
-      }
-      xDown = null;
-    }
 
     fetchM3U();
   </script>
