@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPTV PREMIUM</title>
+  <link rel="icon" href="logo.png" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background-color: #121212;
+      color: white;
+      font-family: sans-serif;
+    }
+    .player-container {
+      position: sticky;
+      top: 0;
+      background: black;
+      z-index: 10;
+    }
+    video {
+      width: 100%;
+      height: 300px;
+      background: black;
+    }
+    .channel-list {
+      display: flex;
+      overflow-x: auto;
+      gap: 10px;
+      padding: 10px;
+      scroll-snap-type: x mandatory;
+    }
+    .channel-item {
+      flex: 0 0 auto;
+      width: 180px;
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      padding: 8px;
+      scroll-snap-align: start;
+      text-align: center;
+      cursor: pointer;
+    }
+    .channel-item img {
+      width: 100%;
+      height: 100px;
+      object-fit: contain;
+    }
+    .now-playing {
+      padding: 10px;
+      background: #333;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .now-playing img {
+      height: 40px;
+      width: 40px;
+      object-fit: contain;
+    }
+    .toast-container {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="player-container">
+    <div class="d-flex align-items-center p-2 bg-dark">
+      <img src="logo.png" height="30" alt="Logo" class="me-2">
+      <strong>IPTV PREMIUM</strong>
+      <button class="btn btn-sm btn-outline-light ms-auto" onclick="toggleTheme()">🌓</button>
+      <button class="btn btn-sm btn-outline-light ms-2" onclick="refreshPlaylist()">🔄 Update</button>
+    </div>
+    <video id="player" controls autoplay></video>
+    <div class="now-playing" id="nowPlaying">
+      <img id="npLogo" src="" />
+      <div>
+        <div id="npTitle">Now Playing: -</div>
+        <small id="npEPG">EPG info...</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-2">
+    <select id="categoryFilter" class="form-select mb-2" onchange="filterCategory()">
+      <option value="All">All Categories</option>
+    </select>
+    <input type="text" class="form-control mb-2" placeholder="Search channels..." oninput="searchChannels(this.value)" />
+    <div class="channel-list" id="channelList"></div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    const playlistURLs = [
+      'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u'
+    ];
+    const epgURL = 'https://tinyurl.com/DrewLive002-epg';
+    let channels = [], favorites = [], currentEPG = {};
+
+    async function fetchPlaylist() {
+      showToast('Updating playlist...', 'info');
+      try {
+        let all = [];
+        for (let url of playlistURLs) {
+          let res = await fetch(url);
+          let txt = await res.text();
+          all.push(txt);
+        }
+        parseM3U(all.join('\n'));
+        showToast('Playlist updated!', 'success');
+      } catch (e) {
+        showToast('Failed to load playlist.', 'danger');
+      }
+    }
+
+    function parseM3U(data) {
+      channels = [];
+      const lines = data.split(/\r?\n/);
+      let channel = {};
+      for (let line of lines) {
+        if (line.startsWith('#EXTINF')) {
+          const nameMatch = line.match(/,(.*)$/);
+          const logoMatch = line.match(/tvg-logo="(.*?)"/);
+          const groupMatch = line.match(/group-title="(.*?)"/);
+          channel = {
+            name: nameMatch ? nameMatch[1] : 'Unknown',
+            logo: logoMatch ? logoMatch[1] : '',
+            group: groupMatch ? groupMatch[1] : 'Others'
+          };
+        } else if (line.startsWith('http')) {
+          channel.url = line;
+          channels.push({ ...channel });
+        }
+      }
+      renderChannels();
+    }
+
+    function renderChannels() {
+      const list = document.getElementById('channelList');
+      list.innerHTML = '';
+      const selected = document.getElementById('categoryFilter').value;
+      const search = (document.querySelector('input[type="text"]').value || '').toLowerCase();
+
+      const uniqueGroups = [...new Set(channels.map(c => c.group))];
+      const categorySelect = document.getElementById('categoryFilter');
+      categorySelect.innerHTML = '<option value="All">All Categories</option>';
+      uniqueGroups.forEach(g => {
+        const o = document.createElement('option');
+        o.value = g; o.textContent = g;
+        categorySelect.appendChild(o);
+      });
+      categorySelect.innerHTML += '<option value="Favorites">Favorites</option>';
+
+      let filtered = channels.filter(c => {
+        if (selected === 'Favorites') return favorites.includes(c.url);
+        return (selected === 'All' || c.group === selected) && c.name.toLowerCase().includes(search);
+      });
+
+      for (let c of filtered) {
+        const div = document.createElement('div');
+        div.className = 'channel-item';
+        div.innerHTML = `
+          <img src="${c.logo}" onerror="this.src='https://via.placeholder.com/100x80?text=No+Logo'"/>
+          <div>${c.name}</div>
+          <button onclick="toggleFavorite('${c.url}')">
+            ${favorites.includes(c.url) ? '⭐' : '☆'}
+          </button>`;
+        div.onclick = () => playChannel(c);
+        list.appendChild(div);
+      }
+    }
+
+    function playChannel(c) {
+      const player = document.getElementById('player');
+      player.src = c.url;
+      document.getElementById('npLogo').src = c.logo;
+      document.getElementById('npTitle').textContent = 'Now Playing: ' + c.name;
+      document.getElementById('npEPG').textContent = 'Fetching EPG...';
+      fetchEPG(c.name);
+    }
+
+    async function fetchEPG(channelName) {
+      try {
+        const res = await fetch(epgURL);
+        const xml = await res.text();
+        const parser = new DOMParser().parseFromString(xml, 'text/xml');
+        const progs = parser.querySelectorAll('programme');
+        const now = new Date();
+        for (let prog of progs) {
+          const start = new Date(prog.getAttribute('start').slice(0, 12));
+          const stop = new Date(prog.getAttribute('stop').slice(0, 12));
+          const title = prog.querySelector('title')?.textContent;
+          const chan = prog.getAttribute('channel');
+          if (chan.includes(channelName) && start <= now && now <= stop) {
+            document.getElementById('npEPG').textContent = title;
+            return;
+          }
+        }
+        document.getElementById('npEPG').textContent = 'No EPG available';
+      } catch (e) {
+        document.getElementById('npEPG').textContent = 'EPG error';
+      }
+    }
+
+    function toggleFavorite(url) {
+      if (favorites.includes(url)) {
+        favorites = favorites.filter(f => f !== url);
+      } else {
+        favorites.push(url);
+      }
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+      renderChannels();
+    }
+
+    function searchChannels(val) {
+      renderChannels();
+    }
+
+    function filterCategory() {
+      renderChannels();
+    }
+
+    function refreshPlaylist() {
+      fetchPlaylist();
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('bg-light');
+      document.body.classList.toggle('text-dark');
+    }
+
+    function showToast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast align-items-center text-bg-${type} border-0 show mb-2`;
+      el.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+      document.getElementById('toastContainer').appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }
+
+    function init() {
+      favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+      fetchPlaylist();
+      setInterval(fetchPlaylist, 15 * 60 * 1000); // auto-refresh every 15 min
+    }
+
+    init();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
