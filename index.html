@@ -3,241 +3,237 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Web IPTV Player</title>
+  <title>IPTV Premium</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+  <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <style>
     body {
-      font-family: sans-serif;
-      background: #111;
-      color: #fff;
       margin: 0;
-      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: white;
     }
-
-    #player {
-      width: 100%;
-      max-height: 60vh;
-      background: #000;
-    }
-
-    .controls {
+    header {
+      background-color: #1e1e1e;
+      padding: 10px 20px;
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 10px;
-      background: #222;
+      justify-content: space-between;
     }
-
+    header .branding {
+      display: flex;
+      align-items: center;
+    }
+    header img {
+      height: 40px;
+      margin-right: 10px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.5em;
+    }
+    #player {
+      width: 100%;
+      height: 260px;
+      background: black;
+    }
+    .controls {
+      padding: 10px 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     input, select, button {
       padding: 6px;
-      font-size: 16px;
+      font-size: 1em;
     }
-
     .channel-list {
       display: flex;
       overflow-x: auto;
-      background: #000;
-      padding: 10px;
+      scroll-snap-type: x mandatory;
       gap: 10px;
+      padding: 10px 20px;
     }
-
     .channel {
-      flex: 0 0 auto;
-      cursor: pointer;
-      width: 120px;
-      text-align: center;
-      background: #222;
-      padding: 6px;
+      background-color: #1e1e1e;
+      padding: 10px;
       border-radius: 8px;
+      min-width: 140px;
+      max-width: 140px;
+      cursor: pointer;
+      flex-shrink: 0;
+      scroll-snap-align: start;
+      text-align: center;
     }
-
     .channel img {
-      width: 100%;
+      width: 60px;
       height: 60px;
       object-fit: contain;
+      margin-bottom: 5px;
     }
-
     .now-playing {
-      padding: 10px;
-      background: #1a1a1a;
+      background: #222;
+      padding: 10px 20px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-
     .now-playing img {
-      width: 50px;
-      height: 50px;
+      width: 40px;
+      height: 40px;
       object-fit: contain;
     }
-
-    .toast {
-      position: fixed;
-      bottom: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #333;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 20px;
-      display: none;
-      z-index: 999;
+    .cast-button {
+      width: 24px;
+      height: 24px;
     }
-
-    .toast.success { background: green; }
-    .toast.error { background: red; }
   </style>
 </head>
 <body>
+  <header>
+    <div class="branding">
+      <img src="logo.png" alt="Logo">
+      <h1>IPTV Premium</h1>
+    </div>
+    <google-cast-launcher class="cast-button"></google-cast-launcher>
+  </header>
 
-<video id="player" controls autoplay></video>
-
-<div class="now-playing" id="nowPlaying" style="display: none;">
-  <img id="npLogo" />
-  <div>
-    <div id="npName">Now Playing</div>
-    <div id="npEPG">EPG Info Here</div>
+  <div class="now-playing" id="nowPlaying" style="display:none;">
+    <img id="npLogo" src="" alt="Logo">
+    <div>
+      <div id="npTitle">Now Playing...</div>
+    </div>
   </div>
-</div>
 
-<div class="controls">
-  <input type="text" id="search" placeholder="Search channels...">
-  <select id="category"><option value="all">All Categories</option></select>
-  <button onclick="loadChannels()">Update Playlist</button>
-  <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
-  <google-cast-launcher style="width: 48px; height: 48px;"></google-cast-launcher>
-</div>
+  <video id="player" controls autoplay muted playsinline></video>
 
-<div class="channel-list" id="channelList"></div>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search channels...">
+    <select id="category"><option value="all">All Categories</option></select>
+    <button onclick="updatePlaylist()">Update Playlist</button>
+  </div>
 
-<div class="toast" id="toast"></div>
+  <div class="channel-list" id="channelList"></div>
 
-<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+  <script>
+    let channels = [];
+    let currentUrl = "";
+    const M3U_URL = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
 
-<script>
-const playlistURL = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
-const epgURL = "https://tinyurl.com/DrewLive002-epg";
+    function parseM3U(data) {
+      const lines = data.split('\n');
+      const result = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('#EXTINF')) {
+          const titleMatch = lines[i].match(/,(.*)$/);
+          const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
+          const groupMatch = lines[i].match(/group-title="(.*?)"/);
+          const url = lines[i + 1];
 
-let channels = [];
-
-function showToast(message, type = "success") {
-  const toast = document.getElementById("toast");
-  toast.textContent = message;
-  toast.className = `toast ${type}`;
-  toast.style.display = "block";
-  setTimeout(() => { toast.style.display = "none"; }, 3000);
-}
-
-function loadChannels() {
-  fetch(playlistURL)
-    .then(res => res.text())
-    .then(parseM3U)
-    .catch(() => showToast("Failed to load playlist", "error"));
-}
-
-function parseM3U(data) {
-  channels = [];
-  const lines = data.split("\n");
-  let current = {};
-  lines.forEach(line => {
-    if (line.startsWith("#EXTINF")) {
-      const name = line.match(/,(.*)$/)?.[1] || "Unknown";
-      const logo = line.match(/tvg-logo="(.*?)"/)?.[1] || "";
-      const group = line.match(/group-title="(.*?)"/)?.[1] || "Others";
-      current = { name, logo, group };
-    } else if (line && !line.startsWith("#")) {
-      current.url = line.trim();
-      channels.push({ ...current });
+          result.push({
+            name: titleMatch ? titleMatch[1] : 'Unknown',
+            logo: logoMatch ? logoMatch[1] : '',
+            group: groupMatch ? groupMatch[1] : 'Other',
+            url
+          });
+        }
+      }
+      return result;
     }
-  });
-  updateChannelList();
-  showToast("Playlist loaded");
-}
 
-function updateChannelList() {
-  const list = document.getElementById("channelList");
-  const categorySelect = document.getElementById("category");
-  const searchTerm = document.getElementById("search").value.toLowerCase();
-  const selectedCategory = categorySelect.value;
+    function loadChannels() {
+      fetch(M3U_URL)
+        .then(res => res.text())
+        .then(data => {
+          channels = parseM3U(data);
+          renderChannels();
+          populateCategories();
+          toastr.success('Playlist loaded');
+        })
+        .catch(() => toastr.error('Failed to load playlist'));
+    }
 
-  list.innerHTML = "";
-  const groups = [...new Set(channels.map(c => c.group))];
-  categorySelect.innerHTML = `<option value="all">All Categories</option>` + 
-    groups.map(g => `<option value="${g}">${g}</option>`).join("");
+    function renderChannels() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const category = document.getElementById('category').value;
+      const container = document.getElementById('channelList');
+      container.innerHTML = '';
 
-  channels.filter(c =>
-    (selectedCategory === "all" || c.group === selectedCategory) &&
-    c.name.toLowerCase().includes(searchTerm)
-  ).forEach((ch, i) => {
-    const div = document.createElement("div");
-    div.className = "channel";
-    div.innerHTML = `<img src="${ch.logo}" onerror="this.src=''" /><div>${ch.name}</div>`;
-    div.onclick = () => playChannel(ch);
-    list.appendChild(div);
-  });
-}
+      channels.filter(ch => ch.name.toLowerCase().includes(search) && (category === 'all' || ch.group === category))
+        .forEach(ch => {
+          const el = document.createElement('div');
+          el.className = 'channel';
+          el.innerHTML = `
+            <img src="${ch.logo || 'https://via.placeholder.com/60'}" alt="Logo">
+            <div class="channel-name">${ch.name}</div>
+          `;
+          el.onclick = () => playChannel(ch);
+          container.appendChild(el);
+        });
+    }
 
-function playChannel(ch) {
-  const player = document.getElementById("player");
-  player.src = ch.url;
-  player.play();
-  document.getElementById("nowPlaying").style.display = "flex";
-  document.getElementById("npLogo").src = ch.logo;
-  document.getElementById("npName").textContent = ch.name;
-  document.getElementById("npEPG").textContent = "Loading...";
-  loadEPG(ch.name);
-}
-
-function toggleFullscreen() {
-  const video = document.getElementById("player");
-  if (!document.fullscreenElement) {
-    video.requestFullscreen().catch(err => console.error(err));
-  } else {
-    document.exitFullscreen();
-  }
-}
-
-function loadEPG(channelName) {
-  fetch(epgURL)
-    .then(res => res.text())
-    .then(data => {
-      const match = data.split("\n").find(line => line.includes(channelName));
-      if (match) {
-        document.getElementById("npEPG").textContent = match;
-      } else {
-        document.getElementById("npEPG").textContent = "No EPG found";
+    function playChannel(ch) {
+      const player = document.getElementById('player');
+      if (currentUrl !== ch.url) {
+        currentUrl = ch.url;
+        player.src = ch.url;
+        player.load();
       }
-    });
-}
+      player.play().catch(err => {
+        document.body.addEventListener("click", () => player.play(), { once: true });
+      });
 
-window['__onGCastApiAvailable'] = function(isAvailable) {
-  if (isAvailable) {
-    const context = cast.framework.CastContext.getInstance();
-    context.setOptions({
-      receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-      autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
-    });
+      // Update Now Playing
+      document.getElementById("nowPlaying").style.display = "flex";
+      document.getElementById("npLogo").src = ch.logo || 'https://via.placeholder.com/40';
+      document.getElementById("npTitle").innerText = ch.name;
 
-    const player = document.getElementById("player");
-    player.addEventListener('play', () => {
-      const castSession = context.getCurrentSession();
-      if (castSession && player.src) {
-        const mediaInfo = new chrome.cast.media.MediaInfo(player.src, 'application/x-mpegURL');
+      // Cast if active
+      if (cast.framework && cast.framework.CastContext.getInstance().getCurrentSession()) {
+        const mediaInfo = new chrome.cast.media.MediaInfo(ch.url, 'application/x-mpegurl');
+        mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+        mediaInfo.metadata.title = ch.name;
+        mediaInfo.metadata.images = [{ url: ch.logo }];
         const request = new chrome.cast.media.LoadRequest(mediaInfo);
-        castSession.loadMedia(request);
+        cast.framework.CastContext.getInstance().getCurrentSession().loadMedia(request);
       }
-    });
-  }
-};
+    }
 
-// Auto-refresh playlist every 15 mins
-setInterval(loadChannels, 15 * 60 * 1000);
+    function populateCategories() {
+      const uniqueGroups = [...new Set(channels.map(ch => ch.group))];
+      const select = document.getElementById('category');
+      select.innerHTML = '<option value="all">All Categories</option>';
+      uniqueGroups.forEach(group => {
+        const opt = document.createElement('option');
+        opt.value = group;
+        opt.textContent = group;
+        select.appendChild(opt);
+      });
+    }
 
-document.getElementById("search").addEventListener("input", updateChannelList);
-document.getElementById("category").addEventListener("change", updateChannelList);
+    function updatePlaylist() {
+      toastr.info('Updating playlist...');
+      loadChannels();
+    }
 
-loadChannels();
-</script>
+    document.getElementById('search').addEventListener('input', renderChannels);
+    document.getElementById('category').addEventListener('change', renderChannels);
 
+    // Auto-refresh every 15 minutes
+    setInterval(loadChannels, 15 * 60 * 1000);
+
+    // Chromecast Init
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+      if (isAvailable) {
+        cast.framework.CastContext.getInstance().setOptions({
+          receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+          autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+      }
+    };
+
+    window.onload = loadChannels;
+  </script>
 </body>
 </html>
