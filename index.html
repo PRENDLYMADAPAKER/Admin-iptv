@@ -7,15 +7,15 @@
   <style>
     body {
       margin: 0;
-      font-family: sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       background-color: #111;
       color: #fff;
     }
 
     header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       padding: 10px;
       background-color: #000;
     }
@@ -25,8 +25,7 @@
     }
 
     #clock {
-      font-size: 14px;
-      color: #fff;
+      font-size: 0.9em;
     }
 
     #player {
@@ -48,10 +47,9 @@
       display: flex;
       padding: 10px;
       gap: 10px;
-      flex-wrap: wrap;
     }
 
-    select, input {
+    select, input[type=text] {
       padding: 8px;
       border-radius: 5px;
       border: none;
@@ -65,7 +63,7 @@
 
     .channel-grid {
       display: flex;
-      transition: transform 0.3s ease;
+      transition: transform 0.4s ease;
     }
 
     .channel-page {
@@ -78,7 +76,7 @@
 
     .channel {
       background: #222;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 10px;
       width: 45%;
       cursor: pointer;
@@ -107,32 +105,18 @@
       cursor: pointer;
     }
 
-    .loading-overlay {
-      position: absolute;
-      top: 0; left: 0;
+    #buffering {
+      position: fixed;
+      top: 200px;
       width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      font-size: 18px;
-      z-index: 999;
+      text-align: center;
+      font-size: 1.2em;
+      display: none;
     }
 
     @media(min-width: 768px) {
-      #player {
-        height: 360px;
-      }
-
-      .channel {
-        width: 200px;
-      }
-
-      .channel-page {
-        justify-content: center;
-      }
+      #player { height: 360px; }
+      .channel { width: 200px; }
     }
   </style>
 </head>
@@ -140,12 +124,14 @@
 
   <header>
     <img src="logo.png" alt="IPTV Premium Logo" />
-    <div id="clock"></div>
+    <div>
+      <input type="text" id="m3uInput" placeholder="Paste M3U URL" style="width:200px;" />
+      <span id="clock"></span>
+    </div>
   </header>
 
   <video id="player" controls autoplay muted></video>
-  <div class="loading-overlay" id="loading" style="display:none;">Loading...</div>
-
+  <div id="buffering">📶 Buffering...</div>
   <div class="now-playing" id="nowPlaying">Now Playing: </div>
 
   <div class="controls">
@@ -154,8 +140,6 @@
       <option value="Favorites">Favorites</option>
     </select>
     <input type="text" id="searchInput" placeholder="Search channel...">
-    <input type="text" id="customM3U" placeholder="Paste custom M3U URL here">
-    <button onclick="importCustomM3U()">Import</button>
   </div>
 
   <div id="swipeZone" class="channel-grid-wrapper">
@@ -163,23 +147,28 @@
   </div>
 
   <script>
-    const defaultM3U = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u';
-    let m3uUrl = localStorage.getItem('customM3U') || defaultM3U;
-
+    let m3uUrl = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u';
     const player = document.getElementById('player');
     const nowPlaying = document.getElementById('nowPlaying');
+    const buffering = document.getElementById('buffering');
     const channelGrid = document.getElementById('channelGrid');
     const categoryFilter = document.getElementById('categoryFilter');
     const searchInput = document.getElementById('searchInput');
-    const loadingOverlay = document.getElementById('loading');
+    const m3uInput = document.getElementById('m3uInput');
 
-    let channels = [];
-    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-    let currentPage = 0;
-    let pages = [];
+    let channels = [], favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    let currentPage = 0, pages = [];
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
     function parseM3U(text) {
       const lines = text.split('\n');
+      channels = [];
       let current = {};
       for (let line of lines) {
         if (line.startsWith('#EXTINF')) {
@@ -195,19 +184,14 @@
     }
 
     async function loadM3U() {
-      loadingOverlay.style.display = 'flex';
-      channels = [];
       try {
         const res = await fetch(m3uUrl);
         const text = await res.text();
         parseM3U(text);
         buildCategoryList();
         filterAndRender();
-        autoPlayLastChannel();
       } catch (e) {
         alert('Failed to load M3U');
-      } finally {
-        loadingOverlay.style.display = 'none';
       }
     }
 
@@ -224,7 +208,7 @@
     function filterAndRender() {
       const query = searchInput.value.toLowerCase();
       const selectedCat = categoryFilter.value;
-      let filtered = channels;
+      let filtered = [...channels];
 
       if (selectedCat === 'Favorites') {
         filtered = filtered.filter(c => favorites.includes(c.url));
@@ -242,13 +226,10 @@
     function renderPages(list) {
       channelGrid.innerHTML = '';
       pages = [];
-
       for (let i = 0; i < list.length; i += 2) {
-        const page = list.slice(i, i + 2);
-        pages.push(page);
+        pages.push(list.slice(i, i + 2));
       }
-
-      pages.forEach((page) => {
+      pages.forEach(page => {
         const div = document.createElement('div');
         div.className = 'channel-page';
         page.forEach(ch => {
@@ -264,21 +245,18 @@
         });
         channelGrid.appendChild(div);
       });
-
       currentPage = 0;
       updatePage();
     }
 
     function playChannel(ch) {
+      buffering.style.display = 'block';
       player.src = ch.url;
       nowPlaying.innerHTML = `<img src="${ch.logo}" height="20"/> Now Playing: ${ch.name}`;
-      localStorage.setItem('lastChannel', JSON.stringify(ch));
+      localStorage.setItem('lastPlayed', JSON.stringify(ch));
     }
 
-    function autoPlayLastChannel() {
-      const last = JSON.parse(localStorage.getItem('lastChannel'));
-      if (last) playChannel(last);
-    }
+    player.addEventListener('playing', () => buffering.style.display = 'none');
 
     function updatePage() {
       channelGrid.style.transform = `translateX(-${currentPage * 100}%)`;
@@ -298,35 +276,6 @@
       }
     }
 
-    function importCustomM3U() {
-      const input = document.getElementById('customM3U').value.trim();
-      if (input) {
-        localStorage.setItem('customM3U', input);
-        m3uUrl = input;
-        categoryFilter.innerHTML = `<option value="All">All</option><option value="Favorites">Favorites</option>`;
-        loadM3U();
-      }
-    }
-
-    let touchStartX = 0;
-    let touchEndX = 0;
-    const swipeZone = document.getElementById('swipeZone');
-
-    swipeZone.addEventListener('touchstart', e => {
-      touchStartX = e.touches[0].clientX;
-    });
-
-    swipeZone.addEventListener('touchend', e => {
-      touchEndX = e.changedTouches[0].clientX;
-      handleSwipe();
-    });
-
-    function handleSwipe() {
-      if (touchEndX < touchStartX - 50) nextPage();
-      if (touchEndX > touchStartX + 50) prevPage();
-    }
-
-    // Favorite toggle
     document.addEventListener('click', e => {
       if (e.target.classList.contains('favorite')) {
         const url = e.target.dataset.url;
@@ -340,25 +289,35 @@
       }
     });
 
-    // Listeners
     searchInput.addEventListener('input', filterAndRender);
     categoryFilter.addEventListener('change', filterAndRender);
-
-    // Clock
-    function updateClock() {
-      const now = new Date();
-      document.getElementById('clock').textContent = now.toLocaleTimeString();
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    // Auto-refresh
-    setInterval(() => {
+    m3uInput.addEventListener('change', () => {
+      m3uUrl = m3uInput.value.trim();
       loadM3U();
-    }, 300000); // every 5 min
+    });
 
+    let touchStartX = 0, touchEndX = 0;
+    const swipeZone = document.getElementById('swipeZone');
+
+    swipeZone.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
+    swipeZone.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].clientX;
+      if (touchEndX < touchStartX - 50) nextPage();
+      if (touchEndX > touchStartX + 50) prevPage();
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') nextPage();
+      if (e.key === 'ArrowLeft') prevPage();
+    });
+
+    if (localStorage.getItem('lastPlayed')) {
+      const last = JSON.parse(localStorage.getItem('lastPlayed'));
+      playChannel(last);
+    }
+
+    setInterval(loadM3U, 5 * 60 * 1000); // auto-refresh every 5 mins
     loadM3U();
   </script>
-
 </body>
 </html>
