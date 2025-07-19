@@ -1,68 +1,109 @@
-// --- login.html ---
-
+<!-- index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - IPTV Premium</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: white; }
-    .centered {
+    body {
+      background-color: #121212;
+      color: white;
+      font-family: Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
+      margin: 0;
     }
-    input, button {
-      margin: 0.5rem;
-      padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 5px;
+    .container {
+      background: #1f1f1f;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(255, 0, 0, 0.3);
     }
-    button { cursor: pointer; }
+    input {
+      display: block;
+      margin: 10px 0;
+      padding: 10px;
+      width: 250px;
+      border-radius: 6px;
+      border: none;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      cursor: pointer;
+      border: none;
+      background-color: #e50914;
+      color: white;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    #toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #323232;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <div class="centered">
+  <div class="container">
     <h2>Login to IPTV</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
     <button onclick="login()">Login</button>
-    <p id="loginError" style="color: red;"></p>
+    <button onclick="register()">Register</button>
   </div>
+
+  <div id="toast"></div>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
       authDomain: "iptv-log-in.firebaseapp.com",
       projectId: "iptv-log-in",
-      storageBucket: "iptv-log-in.firebasestorage.app",
-      messagingSenderId: "820026131349",
-      appId: "1:820026131349:web:417abd6ad9057c55a92c9c",
-      measurementId: "G-4Y8T6J595Z"
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
     firebase.initializeApp(firebaseConfig);
 
+    const auth = firebase.auth();
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.style.display = 'block';
+      setTimeout(() => toast.style.display = 'none', 3000);
+    }
+
     function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      firebase.auth().signInWithEmailAndPassword(email, password)
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, password)
         .then(() => {
-          window.location.href = "iptv.html";
+          showToast("Login Successful!");
+          setTimeout(() => window.location.href = "iptv.html", 1000);
         })
-        .catch(err => {
-          document.getElementById('loginError').textContent = err.message;
-        });
+        .catch(err => showToast(err.message));
+    }
+
+    function register() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => {
+          showToast("Registration Successful!");
+          setTimeout(() => window.location.href = "iptv.html", 1000);
+        })
+        .catch(err => showToast(err.message));
     }
   </script>
 </body>
 </html>
-
-
-// --- iptv.html ---
-
-<!-- I'll now create iptv.html separately for you with full IPTV app logic and redirect to login.html if not authenticated. Ready? -->
