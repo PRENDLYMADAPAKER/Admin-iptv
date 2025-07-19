@@ -1,8 +1,9 @@
+<!-- Full updated IPTV HTML with working categories -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IPTV Premium</title>
   <style>
     body {
@@ -53,7 +54,7 @@
       flex-direction: column;
       gap: 1rem;
     }
-    .controls input {
+    .controls input, .controls select {
       padding: 0.5rem;
       font-size: 1rem;
       width: 100%;
@@ -94,25 +95,24 @@
 
   <video id="player" controls autoplay muted></video>
 
-  <!-- Now Playing -->
   <div id="nowPlaying" class="now-playing-banner" style="display:none;">
     <img id="nowLogo" src="" alt="Logo" />
     <span id="nowName"></span>
   </div>
 
-  <!-- Search and Category Filter -->
   <div class="controls">
     <input type="text" id="searchInput" placeholder="Search channels..." oninput="filterChannels()" />
+    <select id="categorySelect" onchange="filterChannels()">
+      <option value="">All Categories</option>
+    </select>
   </div>
 
-  <!-- EPG Section -->
   <div id="epgSection">
     <h3>Program Guide</h3>
     <div id="epgNow">Now: <span style="opacity: 0.7;">Loading...</span></div>
     <div id="epgNext">Next: <span style="opacity: 0.7;">Loading...</span></div>
   </div>
 
-  <!-- Channel Grid -->
   <div id="channelGrid" class="grid"></div>
 
   <script>
@@ -120,9 +120,90 @@
     const epgUrl = "https://tinyurl.com/DrewLive002-epg";
     let channels = [], epgData = [];
 
-    function formatTime(xmltvTime) {
-      const t = new Date(xmltvTime.slice(0, 14).replace(/(.{4})(.{2})(.{2})(.{2})(.{2})/, "$1-$2-$3T$4:$5"));
-      return t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    function parseM3U(text) {
+      const result = [];
+      const lines = text.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('#EXTINF')) {
+          const nameMatch = lines[i].split(',');
+          const name = nameMatch.length > 1 ? nameMatch[1].trim() : 'Unnamed';
+          const logo = lines[i].match(/tvg-logo="(.*?)"/)?.[1] || '';
+          const group = lines[i].match(/group-title="(.*?)"/)?.[1] || 'Uncategorized';
+          const url = lines[i + 1]?.trim();
+          if (url && url.startsWith('http')) {
+            result.push({ name, logo, url, group });
+            console.log(`Parsed → Name: ${name}, Group: ${group}`);
+          }
+        }
+      }
+      return result;
+    }
+
+    function updateCategoryList() {
+      const categories = new Set();
+      channels.forEach(ch => categories.add(ch.group || "Uncategorized"));
+      const select = document.getElementById("categorySelect");
+      select.innerHTML = '<option value="">All Categories</option>';
+      [...categories].sort().forEach(cat => {
+        const option = document.createElement("option");
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+      });
+      console.log("Categories loaded:", [...categories]);
+    }
+
+    function renderChannels(filteredChannels) {
+      const grid = document.getElementById("channelGrid");
+      grid.innerHTML = "";
+      filteredChannels.forEach(ch => {
+        const div = document.createElement("div");
+        div.className = "channel";
+        div.innerHTML = `<img src="${ch.logo || 'https://via.placeholder.com/300x100'}" /><p>${ch.name}</p>`;
+        div.onclick = () => playChannelByUrl(ch.url);
+        grid.appendChild(div);
+      });
+    }
+
+    function playChannelByUrl(url) {
+      const player = document.getElementById("player");
+      const ch = channels.find(c => c.url === url);
+      if (ch) {
+        player.src = ch.url;
+        document.getElementById("nowPlaying").style.display = "flex";
+        document.getElementById("nowLogo").src = ch.logo || "https://via.placeholder.com/50x50";
+        document.getElementById("nowName").textContent = ch.name;
+        updateEPG(ch);
+      }
+    }
+
+    function filterChannels() {
+      const keyword = document.getElementById("searchInput").value.toLowerCase();
+      const category = document.getElementById("categorySelect").value;
+      const filtered = channels.filter(c =>
+        c.name.toLowerCase().includes(keyword) &&
+        (category === "" || c.group === category)
+      );
+      renderChannels(filtered);
+    }
+
+    function updateClock() {
+      document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+    }
+
+    function fetchEPG() {
+      fetch(epgUrl)
+        .then(res => res.text())
+        .then(xml => {
+          const doc = new DOMParser().parseFromString(xml, "text/xml");
+          epgData = [...doc.querySelectorAll("programme")].map(p => ({
+            start: p.getAttribute("start"),
+            stop: p.getAttribute("stop"),
+            channel: p.getAttribute("channel"),
+            title: p.querySelector("title")?.textContent || "",
+            desc: p.querySelector("desc")?.textContent || ""
+          }));
+        });
     }
 
     function updateEPG(channel) {
@@ -149,82 +230,21 @@
         "Next: N/A";
     }
 
-    function fetchEPG() {
-      fetch(epgUrl)
-        .then(res => res.text())
-        .then(xml => {
-          const doc = new DOMParser().parseFromString(xml, "text/xml");
-          epgData = [...doc.querySelectorAll("programme")].map(p => ({
-            start: p.getAttribute("start"),
-            stop: p.getAttribute("stop"),
-            channel: p.getAttribute("channel"),
-            title: p.querySelector("title")?.textContent || "",
-            desc: p.querySelector("desc")?.textContent || ""
-          }));
-        });
-    }
-
-    function playChannelByUrl(url) {
-      const player = document.getElementById("player");
-      const ch = channels.find(c => c.url === url);
-      if (ch) {
-        player.src = ch.url;
-        document.getElementById("nowPlaying").style.display = "flex";
-        document.getElementById("nowLogo").src = ch.logo || "https://via.placeholder.com/50x50";
-        document.getElementById("nowName").textContent = ch.name;
-        updateEPG(ch);
-      }
-    }
-
-    function parseM3U(text) {
-      const lines = text.split("\n");
-      const result = [];
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith("#EXTINF")) {
-          const name = lines[i].split(",").pop().trim();
-          const logo = lines[i].match(/tvg-logo="(.*?)"/)?.[1];
-          const url = lines[i + 1];
-          result.push({ name, logo, url });
-        }
-      }
-      return result;
-    }
-
-    function renderChannels(filteredChannels) {
-      const grid = document.getElementById("channelGrid");
-      grid.innerHTML = "";
-      filteredChannels.forEach(ch => {
-        const div = document.createElement("div");
-        div.className = "channel";
-        div.innerHTML = `<img src="${ch.logo || "https://via.placeholder.com/300x100"}" /><p>${ch.name}</p>`;
-        div.onclick = () => playChannelByUrl(ch.url);
-        grid.appendChild(div);
-      });
-    }
-
-    function filterChannels() {
-      const keyword = document.getElementById("searchInput").value.toLowerCase();
-      const filtered = channels.filter(c => c.name.toLowerCase().includes(keyword));
-      renderChannels(filtered);
-    }
-
-    function loadChannels() {
-      fetch(m3uUrl)
-        .then(res => res.text())
-        .then(text => {
-          channels = parseM3U(text);
-          renderChannels(channels);
-        });
-    }
-
-    function updateClock() {
-      document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+    function formatTime(xmltvTime) {
+      const t = new Date(xmltvTime.slice(0, 14).replace(/(.{4})(.{2})(.{2})(.{2})(.{2})/, "$1-$2-$3T$4:$5"));
+      return t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
     setInterval(updateClock, 1000);
     updateClock();
     fetchEPG();
-    loadChannels();
+    fetch(m3uUrl)
+      .then(res => res.text())
+      .then(text => {
+        channels = parseM3U(text);
+        updateCategoryList();
+        renderChannels(channels);
+      });
   </script>
 </body>
 </html>
