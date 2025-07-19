@@ -16,7 +16,6 @@ logoutBtn.onclick = () => {
   firebase.auth().signOut().then(() => window.location.href = "login.html");
 };
 
-// 🔁 Parse .m3u playlist
 function parseM3U(data) {
   const lines = data.split("\n");
   let current = {};
@@ -37,27 +36,31 @@ function parseM3U(data) {
   return list;
 }
 
-// ✅ Use HLS.js for video loading
 function loadVideo(channel) {
-  if (window.hls) {
-    window.hls.destroy(); // clean up previous instance
-  }
+  if (!channel.url) return;
 
-  if (Hls.isSupported()) {
-    window.hls = new Hls();
-    window.hls.loadSource(channel.url);
-    window.hls.attachMedia(videoPlayer);
-  } else if (videoPlayer.canPlayType("application/vnd.apple.mpegurl")) {
-    videoPlayer.src = channel.url;
-  } else {
-    alert("This browser does not support HLS playback.");
-  }
+  // Clear current video
+  videoPlayer.pause();
+  videoPlayer.removeAttribute("src");
+  videoPlayer.load();
 
   channelName.textContent = channel.name;
   channelIcon.src = channel.logo || "";
+
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(channel.url);
+    hls.attachMedia(videoPlayer);
+    hls.on(Hls.Events.ERROR, function (event, data) {
+      console.error("HLS.js error", data);
+    });
+  } else if (videoPlayer.canPlayType("application/vnd.apple.mpegurl")) {
+    videoPlayer.src = channel.url;
+  } else {
+    alert("Your browser does not support HLS streaming.");
+  }
 }
 
-// Render all channels
 function renderChannels(filtered) {
   channelGrid.innerHTML = "";
   filtered.forEach((channel) => {
@@ -116,7 +119,6 @@ function toggleFavorite(url) {
 searchBar.addEventListener("input", () => renderChannels(getFilteredChannels()));
 categoryFilter.addEventListener("change", () => renderChannels(getFilteredChannels()));
 
-// 🔁 Fetch and initialize
 fetch(m3uUrl)
   .then(res => res.text())
   .then(data => {
