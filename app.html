@@ -1,167 +1,136 @@
+<!-- app.html - Final IPTV Premium App (All features in one HTML, no iptv-core.js) -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPTV Premium</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { margin: 0; font-family: sans-serif; background: #121212; color: white; }
-    header {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 20px; background: #1f1f1f;
-    }
-    header h1 { font-size: 20px; margin: 0; }
-    #clock { font-size: 14px; color: #ccc; }
-    #logout-btn {
-      background: #ff5722; border: none; color: white;
-      padding: 6px 12px; border-radius: 6px; cursor: pointer;
-    }
-    #video-player {
-      width: 100%; height: 220px; background: black;
-    }
-    #now-playing-banner {
-      display: flex; align-items: center; padding: 10px;
-      background: #222; font-size: 16px;
-    }
-    #channel-icon {
-      width: 40px; height: 40px; margin-right: 10px; border-radius: 4px;
-    }
-    #epg-now { font-size: 14px; color: #ccc; margin-left: auto; }
-    #channel-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr);
-      gap: 10px; padding: 10px;
-    }
-    .channel-card {
-      background: #1e1e1e; border-radius: 10px; overflow: hidden;
-      display: flex; flex-direction: column; align-items: center;
-      padding: 10px; cursor: pointer; text-align: center;
-    }
-    .channel-card img {
-      width: 100%; height: 100px; object-fit: cover;
-      border-radius: 6px;
-    }
-    .channel-card button {
-      margin-top: 5px; background: none; border: none; color: #ffcc00;
-      font-size: 18px;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: white; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #222; }
+    header h1 { font-size: 1.2rem; margin: 0; }
+    #clock { font-weight: bold; }
+    #logout-btn { background: red; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+    #video-player { width: 100%; height: 200px; background: black; }
+    #now-playing-banner { display: flex; align-items: center; padding: 10px; background: #333; }
+    #channel-icon { width: 40px; height: 40px; margin-right: 10px; }
+    #epg-now { font-size: 0.9rem; color: #ccc; }
+    #channel-grid { display: flex; flex-wrap: wrap; justify-content: center; padding: 10px; gap: 10px; }
+    .channel-card { background: #222; padding: 10px; border-radius: 10px; width: 45%; cursor: pointer; text-align: center; }
+    .channel-card img { width: 100%; height: 100px; object-fit: contain; border-radius: 8px; }
+    .channel-card span { display: block; margin: 5px 0; font-size: 0.9rem; }
+    .channel-card button { background: transparent; border: none; font-size: 1.2rem; color: gold; cursor: pointer; }
+    @media (min-width: 600px) { .channel-card { width: 22%; } }
   </style>
-</head>
-<body>
-  <header>
-    <h1>IPTV Premium</h1>
-    <div id="clock"></div>
-    <button id="logout-btn">Logout</button>
-  </header>
+  <script type="module">
+    // Firebase Auth Protection
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  <video id="video-player" controls autoplay muted></video>
-
-  <div id="now-playing-banner">
-    <img id="channel-icon" src="fallback.png">
-    <span id="now-playing">Now Playing</span>
-    <span id="epg-now"></span>
-  </div>
-
-  <div id="channel-grid"></div>
-
-  <!-- Firebase Auth + All IPTV Code -->
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
-  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
       authDomain: "iptv-log-in.firebaseapp.com",
       projectId: "iptv-log-in",
       appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
-    firebase.initializeApp(firebaseConfig);
-    firebase.auth().onAuthStateChanged(user => {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    onAuthStateChanged(auth, user => {
       if (!user) window.location.href = "index.html";
     });
-    document.getElementById("logout-btn").onclick = () => {
-      firebase.auth().signOut().then(() => window.location.href = "index.html");
-    };
+
+    window.logout = () => signOut(auth).then(() => location.href = "index.html");
   </script>
+</head>
+<body>
+  <header>
+    <h1>📺 IPTV Premium</h1>
+    <div>
+      <span id="clock"></span>
+      <button id="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <video id="video-player" controls autoplay muted></video>
+
+  <div id="now-playing-banner">
+    <img id="channel-icon" src="" alt="icon" />
+    <div>
+      <div id="now-playing">Now Playing</div>
+      <div id="epg-now"></div>
+    </div>
+  </div>
+
+  <div id="channel-grid"></div>
 
   <script>
-    const M3U_URL = atob("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL1BSRU5ETFlNQURBUEFLL0FORy1LQUxBVC1NTy9tYWluL0lQVFZQUkVNSVVNLm0zdQ==");
+    const M3U_SRC = atob("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL1BSRU5ETFlNQURBUEFLL0FORy1LQUxBVC1NTy9tYWluL0lQVFZQUkVNSVVNLm0zdQ==");
     const EPG_URL = "https://tinyurl.com/DrewLive002-epg";
+    let channels = [], favorites = JSON.parse(localStorage.getItem("favorites") || "[]"), last = localStorage.getItem("lastWatched") || null;
 
-    let channels = [];
-    let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-    let lastWatched = localStorage.getItem("lastWatched") || null;
+    function updateClock() {
+      document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000); updateClock();
 
-    async function fetchChannels() {
-      const res = await fetch(M3U_URL);
+    async function fetchM3U() {
+      const res = await fetch(M3U_SRC);
       const text = await res.text();
       const lines = text.split("\n");
       for (let i = 0; i < lines.length; i++) {
         if (lines[i].startsWith("#EXTINF")) {
-          const name = lines[i].split(",").pop().trim();
-          const logo = (lines[i].match(/tvg-logo="(.*?)"/) || [])[1] || "fallback.png";
+          const title = lines[i].split(",").pop().trim();
+          const logo = /tvg-logo="(.*?)"/.exec(lines[i])?.[1] || "";
+          const group = /group-title="(.*?)"/.exec(lines[i])?.[1] || "Other";
           const url = lines[i + 1];
-          channels.push({ name, logo, url });
+          channels.push({ name: title, logo, group, url });
         }
       }
       renderChannels();
-      if (lastWatched) {
-        const idx = channels.findIndex(c => c.url === lastWatched);
-        if (idx >= 0) playChannel(channels[idx].url, idx);
-      }
+      if (last) playChannel(last);
     }
 
     function renderChannels() {
       const grid = document.getElementById("channel-grid");
       grid.innerHTML = "";
-      channels.forEach((ch, idx) => {
+      channels.forEach((ch, i) => {
         const card = document.createElement("div");
         card.className = "channel-card";
         card.innerHTML = `
           <img src="${ch.logo}" onerror="this.src='fallback.png'">
           <span>${ch.name}</span>
-          <button onclick="event.stopPropagation(); toggleFavorite(${idx})">
+          <button onclick="toggleFavorite(${i});event.stopPropagation()">
             ${favorites.includes(ch.url) ? "★" : "☆"}
-          </button>
-        `;
-        card.onclick = () => playChannel(ch.url, idx);
+          </button>`;
+        card.onclick = () => playChannel(ch.url, i);
         grid.appendChild(card);
       });
     }
 
-    function playChannel(url, idx) {
-      const player = document.getElementById("video-player");
-      const banner = document.getElementById("now-playing");
-      const icon = document.getElementById("channel-icon");
-      const channel = channels[idx];
-      player.src = channel.url;
-      player.play();
-      localStorage.setItem("lastWatched", channel.url);
-      banner.textContent = channel.name;
-      icon.src = channel.logo;
-      fetch(EPG_URL)
-        .then(res => res.json())
-        .then(data => {
-          const match = data.find(e => e.name?.toLowerCase() === channel.name.toLowerCase());
-          if (match && match.now) {
-            document.getElementById("epg-now").textContent = match.now;
-          }
-        });
-    }
-
-    function toggleFavorite(idx) {
-      const url = channels[idx].url;
-      const i = favorites.indexOf(url);
-      if (i >= 0) favorites.splice(i, 1);
+    function toggleFavorite(index) {
+      const url = channels[index].url;
+      if (favorites.includes(url)) favorites = favorites.filter(u => u !== url);
       else favorites.push(url);
       localStorage.setItem("favorites", JSON.stringify(favorites));
       renderChannels();
     }
 
-    setInterval(() => {
-      const now = new Date();
-      document.getElementById("clock").textContent = now.toLocaleTimeString();
-    }, 1000);
+    function playChannel(url, index) {
+      const ch = channels[index];
+      document.getElementById("video-player").src = url;
+      document.getElementById("now-playing").textContent = ch.name;
+      document.getElementById("channel-icon").src = ch.logo;
+      localStorage.setItem("lastWatched", url);
+      fetch(EPG_URL)
+        .then(r => r.json())
+        .then(data => {
+          const epg = data.find(e => e.name.toLowerCase() === ch.name.toLowerCase());
+          if (epg && epg.now) document.getElementById("epg-now").textContent = epg.now;
+        });
+    }
 
-    document.addEventListener("DOMContentLoaded", fetchChannels);
+    document.addEventListener("DOMContentLoaded", fetchM3U);
   </script>
 </body>
 </html>
