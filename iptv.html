@@ -3,58 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IPTV Web App</title>
+  <title>IPTV Premium</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script src="firebase.js"></script>
 </head>
 <body>
   <header>
-    <div class="logo-container">
-      <img src="logo.png" alt="IPTV Logo" class="app-logo" />
-    </div>
+    <img src="logo.png" class="logo" />
+    <div id="clock"></div>
     <button id="logout-btn">Logout</button>
   </header>
 
   <main>
-    <div class="now-playing">
-      <img id="channel-icon" src="" alt="Channel Icon" />
-      <span id="channel-name">Loading...</span>
+    <div id="video-container">
+      <video id="video-player" controls autoplay></video>
+      <div id="now-playing">
+        <img id="channel-icon" src="" alt="Icon" />
+        <span id="channel-name">Now Playing</span>
+        <div id="epg-info"></div>
+      </div>
     </div>
-
-    <video id="video-player" controls autoplay></video>
-
-    <div id="channel-carousel" class="carousel-container"></div>
 
     <div class="controls">
       <input type="text" id="search-bar" placeholder="Search channels..." />
-      <select id="category-filter">
-        <option>All</option>
-        <option>Favorites</option>
-      </select>
+      <select id="category-filter"></select>
     </div>
 
-    <div id="channel-grid" class="channel-grid"></div>
+    <div id="channel-grid"></div>
   </main>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
-      authDomain: "iptv-log-in.firebaseapp.com",
-      projectId: "iptv-log-in",
-      storageBucket: "iptv-log-in.firebasestorage.app",
-      messagingSenderId: "820026131349",
-      appId: "1:820026131349:web:417abd6ad9057c55a92c9c",
-      measurementId: "G-4Y8T6J595Z"
-    };
-    firebase.initializeApp(firebaseConfig);
-  </script>
-
-  <!-- HLS.js -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-  <!-- IPTV Script -->
   <script src="iptv.js"></script>
 </body>
 </html>
