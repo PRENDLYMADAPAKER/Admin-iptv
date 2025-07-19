@@ -1,79 +1,131 @@
-<!-- index.html - Login/Register Page for IPTV Premium -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login | IPTV Premium</title>
+  <title>IPTV Web App</title>
   <style>
-    body { font-family: sans-serif; background: #111; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .container { background: #222; padding: 20px; border-radius: 10px; width: 90%; max-width: 320px; box-shadow: 0 0 10px #000; }
-    h2 { text-align: center; }
-    input, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: none; }
-    input { background: #333; color: white; }
-    button { background: #e91e63; color: white; cursor: pointer; }
-    .toggle { color: #ccc; text-align: center; margin-top: 10px; cursor: pointer; }
-    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #444; padding: 10px 20px; border-radius: 5px; display: none; }
+    body { margin: 0; font-family: sans-serif; background: #111; color: #fff; }
+    .video-container { position: sticky; top: 0; background: #000; z-index: 1000; }
+    video { width: 100%; height: 300px; background: #000; }
+    .controls { padding: 1rem; }
+    input, select { width: 100%; padding: 0.5rem; margin-bottom: 1rem; background: #222; color: #fff; border: none; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
+    .channel { background: #222; padding: 0.5rem; border-radius: 8px; cursor: pointer; }
+    .channel img { width: 100%; height: 80px; object-fit: contain; background: #000; }
+    .favorite { color: gold; font-size: 0.8rem; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2 id="form-title">Login</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="handleAuth()">Login</button>
-    <div class="toggle" onclick="toggleMode()">Don't have an account? Register</div>
-  </div>
-  <div id="toast"></div>
 
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+<div class="video-container">
+  <video id="player" controls autoplay></video>
+</div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
-      authDomain: "iptv-log-in.firebaseapp.com",
-      projectId: "iptv-log-in",
-      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
-    };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+<div class="controls">
+  <input type="text" id="search" placeholder="Search channels..." />
+  <select id="category"></select>
+</div>
 
-    let isLogin = true;
+<div class="grid" id="channelGrid"></div>
 
-    function toggleMode() {
-      isLogin = !isLogin;
-      document.querySelector("button").textContent = isLogin ? "Login" : "Register";
-      document.getElementById("form-title").textContent = isLogin ? "Login" : "Register";
-      document.querySelector(".toggle").textContent = isLogin
-        ? "Don't have an account? Register"
-        : "Already have an account? Login";
-    }
+<script>
+  const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
+  const player = document.getElementById("player");
+  const grid = document.getElementById("channelGrid");
+  const searchInput = document.getElementById("search");
+  const categorySelect = document.getElementById("category");
 
-    function showToast(msg) {
-      const toast = document.getElementById("toast");
-      toast.textContent = msg;
-      toast.style.display = "block";
-      setTimeout(() => toast.style.display = "none", 3000);
-    }
+  let channels = [], filtered = [], favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+  let currentIndex = 0;
 
-    window.handleAuth = async function () {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      try {
-        if (isLogin) {
-          await signInWithEmailAndPassword(auth, email, password);
-          showToast("Login successful!");
-        } else {
-          await createUserWithEmailAndPassword(auth, email, password);
-          showToast("Registration successful!");
-        }
-        setTimeout(() => window.location.href = "app.html", 1500);
-      } catch (e) {
-        showToast(e.message);
+  function parseM3U(data) {
+    const lines = data.split(/\r?\n/);
+    const result = [];
+    let current = {};
+
+    lines.forEach(line => {
+      if (line.startsWith("#EXTINF")) {
+        const nameMatch = line.match(/,(.*)$/);
+        const logoMatch = line.match(/tvg-logo="(.*?)"/);
+        const groupMatch = line.match(/group-title="(.*?)"/);
+        current = {
+          name: nameMatch ? nameMatch[1] : "Unknown",
+          logo: logoMatch ? logoMatch[1] : "",
+          group: groupMatch ? groupMatch[1] : "Other"
+        };
+      } else if (line && !line.startsWith("#")) {
+        current.url = line;
+        result.push({ ...current });
       }
-    };
-  </script>
+    });
+    return result;
+  }
+
+  function updateCategoryOptions() {
+    const allGroups = ["All", "Favorites", ...new Set(channels.map(c => c.group))];
+    categorySelect.innerHTML = allGroups.map(g => `<option value="${g}">${g}</option>`).join("");
+  }
+
+  function renderChannels() {
+    const search = searchInput.value.toLowerCase();
+    const category = categorySelect.value;
+    filtered = channels.filter(c =>
+      (category === "All" || (category === "Favorites" && favorites.includes(c.url)) || c.group === category) &&
+      c.name.toLowerCase().includes(search)
+    );
+
+    grid.innerHTML = filtered.map((ch, idx) => `
+      <div class="channel" onclick="playChannel(${idx})">
+        <img src="${ch.logo || 'https://via.placeholder.com/150x80?text=No+Logo'}" />
+        <div>${ch.name}</div>
+        <div class="favorite" onclick="toggleFavorite(event, '${ch.url}')">
+          ${favorites.includes(ch.url) ? "★ Favorite" : "☆ Add Favorite"}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function playChannel(index) {
+    const ch = filtered[index];
+    currentIndex = index;
+    player.src = ch.url;
+    player.play();
+  }
+
+  function toggleFavorite(event, url) {
+    event.stopPropagation();
+    if (favorites.includes(url)) {
+      favorites = favorites.filter(f => f !== url);
+    } else {
+      favorites.push(url);
+    }
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+    renderChannels();
+  }
+
+  function swipeHandler(e) {
+    const x = e.changedTouches[0].clientX;
+    const direction = x < window.innerWidth / 2 ? 1 : -1;
+    const nextIndex = currentIndex + direction;
+    if (filtered[nextIndex]) {
+      playChannel(nextIndex);
+    }
+  }
+
+  player.addEventListener("touchend", swipeHandler);
+  searchInput.addEventListener("input", renderChannels);
+  categorySelect.addEventListener("change", renderChannels);
+
+  fetch(m3uUrl)
+    .then(res => res.text())
+    .then(data => {
+      channels = parseM3U(data);
+      updateCategoryOptions();
+      renderChannels();
+      playChannel(0);
+    });
+</script>
+
 </body>
 </html>
