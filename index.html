@@ -46,6 +46,20 @@
       padding: 1rem;
       border-top: 1px solid #333;
     }
+    .controls {
+      padding: 1rem;
+      background: #1c1c1c;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .controls input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 100%;
+      border: none;
+      border-radius: 5px;
+    }
     .grid {
       display: flex;
       overflow-x: auto;
@@ -84,6 +98,11 @@
   <div id="nowPlaying" class="now-playing-banner" style="display:none;">
     <img id="nowLogo" src="" alt="Logo" />
     <span id="nowName"></span>
+  </div>
+
+  <!-- Search and Category Filter -->
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Search channels..." oninput="filterChannels()" />
   </div>
 
   <!-- EPG Section -->
@@ -171,20 +190,30 @@
       return result;
     }
 
+    function renderChannels(filteredChannels) {
+      const grid = document.getElementById("channelGrid");
+      grid.innerHTML = "";
+      filteredChannels.forEach(ch => {
+        const div = document.createElement("div");
+        div.className = "channel";
+        div.innerHTML = `<img src="${ch.logo || "https://via.placeholder.com/300x100"}" /><p>${ch.name}</p>`;
+        div.onclick = () => playChannelByUrl(ch.url);
+        grid.appendChild(div);
+      });
+    }
+
+    function filterChannels() {
+      const keyword = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = channels.filter(c => c.name.toLowerCase().includes(keyword));
+      renderChannels(filtered);
+    }
+
     function loadChannels() {
       fetch(m3uUrl)
         .then(res => res.text())
         .then(text => {
           channels = parseM3U(text);
-          const grid = document.getElementById("channelGrid");
-          grid.innerHTML = "";
-          channels.forEach(ch => {
-            const div = document.createElement("div");
-            div.className = "channel";
-            div.innerHTML = `<img src="${ch.logo || "https://via.placeholder.com/300x100"}" /><p>${ch.name}</p>`;
-            div.onclick = () => playChannelByUrl(ch.url);
-            grid.appendChild(div);
-          });
+          renderChannels(channels);
         });
     }
 
