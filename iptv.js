@@ -1,7 +1,6 @@
 const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
 let channels = [];
 let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-let currentChannelIndex = 0;
 
 const videoPlayer = document.getElementById("video-player");
 const channelGrid = document.getElementById("channel-grid");
@@ -18,8 +17,8 @@ logoutBtn.onclick = () => {
 
 function parseM3U(data) {
   const lines = data.split("\n");
-  const list = [];
   let current = {};
+  let list = [];
 
   for (let line of lines) {
     if (line.startsWith("#EXTINF")) {
@@ -41,20 +40,20 @@ function loadVideo(channel) {
     const hls = new Hls();
     hls.loadSource(channel.url);
     hls.attachMedia(videoPlayer);
-  } else if (videoPlayer.canPlayType("application/vnd.apple.mpegurl")) {
-    videoPlayer.src = channel.url;
   } else {
-    alert("This browser doesn't support HLS.");
+    videoPlayer.src = channel.url;
   }
-  videoPlayer.play();
+
   channelName.textContent = channel.name;
   channelIcon.src = channel.logo || "";
 }
 
 function renderChannels(filtered) {
   channelGrid.innerHTML = "";
+  carousel.innerHTML = "";
 
-  filtered.forEach((channel, index) => {
+  filtered.forEach((channel) => {
+    // Channel Grid Card
     const card = document.createElement("div");
     card.className = "channel-card";
 
@@ -76,46 +75,33 @@ function renderChannels(filtered) {
     };
     card.appendChild(fav);
 
-    card.onclick = () => {
-      currentChannelIndex = index;
-      loadVideo(channel);
-    };
-
+    card.onclick = () => loadVideo(channel);
     channelGrid.appendChild(card);
+
+    // Carousel Card
+    const slide = document.createElement("div");
+    slide.className = "carousel-item";
+    slide.innerHTML = `<img src="${channel.logo}" alt="${channel.name}" /><p>${channel.name}</p>`;
+    slide.onclick = () => loadVideo(channel);
+    carousel.appendChild(slide);
   });
-}
-
-function renderCarousel() {
-  carousel.innerHTML = `
-    <button id="prev-btn">⟨</button>
-    <button id="next-btn">⟩</button>
-  `;
-
-  document.getElementById("prev-btn").onclick = () => {
-    currentChannelIndex = (currentChannelIndex - 1 + channels.length) % channels.length;
-    loadVideo(channels[currentChannelIndex]);
-  };
-
-  document.getElementById("next-btn").onclick = () => {
-    currentChannelIndex = (currentChannelIndex + 1) % channels.length;
-    loadVideo(channels[currentChannelIndex]);
-  };
 }
 
 function getFilteredChannels() {
   const search = searchBar.value.toLowerCase();
   const category = categoryFilter.value;
+
   return channels.filter((c) => {
-    const inCategory = category === "All" || c.group === category || (category === "Favorites" && favorites.includes(c.url));
+    const matchesCategory = category === "All" || c.group === category || (category === "Favorites" && favorites.includes(c.url));
     const matchesSearch = c.name.toLowerCase().includes(search);
-    return inCategory && matchesSearch;
+    return matchesCategory && matchesSearch;
   });
 }
 
 function populateCategories() {
-  const unique = [...new Set(channels.map(c => c.group))];
+  const categories = [...new Set(channels.map(c => c.group))];
   categoryFilter.innerHTML = "<option>All</option><option>Favorites</option>" +
-    unique.map(c => `<option>${c}</option>`).join("");
+    categories.map(c => `<option>${c}</option>`).join("");
 }
 
 function toggleFavorite(url) {
@@ -135,11 +121,6 @@ fetch(m3uUrl)
   .then(data => {
     channels = parseM3U(data);
     populateCategories();
-    renderCarousel();
-    renderChannels(getFilteredChannels());
-
-    if (channels.length > 0) {
-      currentChannelIndex = 0;
-      loadVideo(channels[0]);
-    }
+    renderChannels(channels);
+    if (channels.length > 0) loadVideo(channels[0]);
   });
