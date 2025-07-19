@@ -3,33 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPTV Web App</title>
+  <title>IPTV Premium</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <div class="channel-info">
-      <img id="channel-icon" src="" alt="Channel Logo" />
-      <span id="channel-name">Loading...</span>
+  <header class="app-header">
+    <div class="header-left">
+      <img src="logo.png" alt="IPTV Premium Logo" class="app-logo" />
     </div>
-    <button id="logout-btn">Logout</button>
+    <div class="header-right">
+      <button id="logout-btn">Logout</button>
+    </div>
   </header>
 
   <main>
-    <video id="video-player" controls autoplay></video>
+    <section class="player-section">
+      <video id="video-player" controls autoplay></video>
+      <div class="now-playing">
+        <img id="channel-icon" src="" alt="Channel Icon" />
+        <span id="channel-name">Loading...</span>
+      </div>
+    </section>
 
-    <div class="controls">
+    <section class="controls">
       <input type="text" id="search-bar" placeholder="Search channels..." />
       <select id="category-filter">
-        <option>All</option>
-        <option>Favorites</option>
+        <option value="All">All</option>
+        <option value="Favorites">Favorites</option>
       </select>
-    </div>
+    </section>
 
-    <div id="channel-grid" class="channel-grid"></div>
+    <section id="channel-grid" class="channel-grid"></section>
   </main>
 
-  <!-- Firebase -->
+  <!-- Firebase Auth -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
   <script>
@@ -45,10 +52,10 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 
-  <!-- HLS.js -->
+  <!-- HLS.js for m3u8 streaming support -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- IPTV Logic -->
+  <!-- IPTV functionality -->
   <script src="iptv.js"></script>
 </body>
 </html>
