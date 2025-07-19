@@ -1,173 +1,79 @@
+<!-- index.html - Login/Register Page for IPTV Premium -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IPTV Premium</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login | IPTV Premium</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #121212; color: white; }
-    header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #1f1f1f; }
-    #logo { font-size: 20px; font-weight: bold; color: #ff5722; }
-    #clock { font-size: 14px; }
-    #video-player { width: 100%; height: 250px; background: black; }
-    #now-playing-banner { padding: 10px; background: #1f1f1f; display: flex; align-items: center; gap: 10px; }
-    #channel-icon { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; }
-    #now-playing-name { font-size: 16px; }
-    #epg-now { font-size: 14px; color: #ccc; }
-    #controls { display: flex; gap: 10px; padding: 10px; }
-    input, select { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 14px; }
-    #channel-grid { display: flex; flex-wrap: wrap; padding: 10px; gap: 10px; justify-content: center; }
-    .channel-card {
-      width: 48%; background: #222; border-radius: 10px; overflow: hidden; box-shadow: 0 0 5px rgba(0,0,0,0.5);
-      display: flex; flex-direction: column; align-items: center; padding: 10px;
-    }
-    .channel-card img { width: 100%; max-height: 100px; object-fit: contain; background: #000; }
-    .channel-card span { margin: 10px 0 5px; text-align: center; font-size: 14px; }
-    .channel-card button { background: transparent; color: gold; border: none; font-size: 20px; cursor: pointer; }
-    #settings-btn { position: fixed; bottom: 20px; right: 20px; background: #ff5722; color: white; border: none; padding: 15px; border-radius: 50%; font-size: 18px; box-shadow: 0 0 10px #000; }
-    #toast {
-      visibility: hidden; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: #333; color: #fff; padding: 10px 20px; border-radius: 8px; z-index: 1000;
-    }
-    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2s; }
-    @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 20px; opacity: 1;} }
-    @keyframes fadeout { from {bottom: 20px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    body { font-family: sans-serif; background: #111; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .container { background: #222; padding: 20px; border-radius: 10px; width: 90%; max-width: 320px; box-shadow: 0 0 10px #000; }
+    h2 { text-align: center; }
+    input, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: none; }
+    input { background: #333; color: white; }
+    button { background: #e91e63; color: white; cursor: pointer; }
+    .toggle { color: #ccc; text-align: center; margin-top: 10px; cursor: pointer; }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #444; padding: 10px 20px; border-radius: 5px; display: none; }
   </style>
 </head>
 <body>
-  <header>
-    <div id="logo">IPTV PREMIUM</div>
-    <div id="clock"></div>
-  </header>
-
-  <video id="video-player" controls autoplay></video>
-
-  <div id="now-playing-banner">
-    <img id="channel-icon" src="" alt="Logo">
-    <div>
-      <div id="now-playing-name">Now Playing</div>
-      <div id="epg-now">Loading EPG...</div>
-    </div>
+  <div class="container">
+    <h2 id="form-title">Login</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="handleAuth()">Login</button>
+    <div class="toggle" onclick="toggleMode()">Don't have an account? Register</div>
   </div>
-
-  <div id="controls">
-    <input type="text" id="search" placeholder="Search Channels" oninput="filterChannels()">
-    <select id="category-filter" onchange="filterChannels()"></select>
-  </div>
-
-  <div id="channel-grid"></div>
-
-  <button id="settings-btn" onclick="importM3U()">⚙️</button>
-
   <div id="toast"></div>
 
-  <script>
-    const M3U_DEFAULT = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
-    const EPG_URL = "https://tinyurl.com/DrewLive002-epg";
-    let channels = [], filteredChannels = [], favorites = JSON.parse(localStorage.getItem("favorites") || "[]"), lastWatched = localStorage.getItem("lastWatched") || null;
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+      authDomain: "iptv-log-in.firebaseapp.com",
+      projectId: "iptv-log-in",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    let isLogin = true;
+
+    function toggleMode() {
+      isLogin = !isLogin;
+      document.querySelector("button").textContent = isLogin ? "Login" : "Register";
+      document.getElementById("form-title").textContent = isLogin ? "Login" : "Register";
+      document.querySelector(".toggle").textContent = isLogin
+        ? "Don't have an account? Register"
+        : "Already have an account? Login";
+    }
 
     function showToast(msg) {
       const toast = document.getElementById("toast");
       toast.textContent = msg;
-      toast.className = "show";
-      setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3000);
     }
 
-    function updateClock() {
-      const now = new Date();
-      document.getElementById("clock").textContent = now.toLocaleTimeString();
-    }
-    setInterval(updateClock, 1000); updateClock();
-
-    async function loadM3U(url) {
+    window.handleAuth = async function () {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
       try {
-        const res = await fetch(url);
-        const text = await res.text();
-        parseM3U(text);
-        renderChannels();
-        if (lastWatched) playChannel(lastWatched);
-      } catch (err) {
-        showToast("Failed to load M3U");
-      }
-    }
-
-    function parseM3U(data) {
-      channels = [];
-      const lines = data.split(/\r?\n/);
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith("#EXTINF")) {
-          const name = lines[i].split(",").pop();
-          const logo = lines[i].match(/tvg-logo="(.*?)"/)?.[1] || "";
-          const group = lines[i].match(/group-title="(.*?)"/)?.[1] || "Uncategorized";
-          const url = lines[i + 1];
-          channels.push({ name, logo, group, url });
+        if (isLogin) {
+          await signInWithEmailAndPassword(auth, email, password);
+          showToast("Login successful!");
+        } else {
+          await createUserWithEmailAndPassword(auth, email, password);
+          showToast("Registration successful!");
         }
+        setTimeout(() => window.location.href = "app.html", 1500);
+      } catch (e) {
+        showToast(e.message);
       }
-      updateCategoryFilter();
-      filteredChannels = channels;
-    }
-
-    function updateCategoryFilter() {
-      const select = document.getElementById("category-filter");
-      const groups = ["All", "Favorites", ...new Set(channels.map(c => c.group))];
-      select.innerHTML = groups.map(g => `<option value="${g}">${g}</option>`).join("");
-    }
-
-    function filterChannels() {
-      const keyword = document.getElementById("search").value.toLowerCase();
-      const category = document.getElementById("category-filter").value;
-      filteredChannels = channels.filter(ch => {
-        return (category === "All" || ch.group === category || (category === "Favorites" && favorites.includes(ch.url))) && ch.name.toLowerCase().includes(keyword);
-      });
-      renderChannels();
-    }
-
-    function renderChannels() {
-      const grid = document.getElementById("channel-grid");
-      grid.innerHTML = "";
-      filteredChannels.forEach((ch, idx) => {
-        const card = document.createElement("div");
-        card.className = "channel-card";
-        card.innerHTML = `
-          <img src="${ch.logo}" onerror="this.src='fallback.png'">
-          <span>${ch.name}</span>
-          <button onclick="toggleFavorite(${idx})">${favorites.includes(ch.url) ? '★' : '☆'}</button>
-        `;
-        card.onclick = () => playChannel(ch.url);
-        grid.appendChild(card);
-      });
-    }
-
-    function toggleFavorite(index) {
-      const url = filteredChannels[index].url;
-      const i = favorites.indexOf(url);
-      if (i >= 0) favorites.splice(i, 1);
-      else favorites.push(url);
-      localStorage.setItem("favorites", JSON.stringify(favorites));
-      filterChannels();
-    }
-
-    function playChannel(url) {
-      const ch = channels.find(c => c.url === url);
-      if (!ch) return;
-      const player = document.getElementById("video-player");
-      player.src = ch.url;
-      player.play();
-      document.getElementById("channel-icon").src = ch.logo;
-      document.getElementById("now-playing-name").textContent = ch.name;
-      localStorage.setItem("lastWatched", ch.url);
-      fetch(EPG_URL).then(res => res.json()).then(epg => {
-        const match = epg.find(e => e.name?.toLowerCase() === ch.name.toLowerCase());
-        if (match?.now) document.getElementById("epg-now").textContent = match.now;
-      });
-    }
-
-    function importM3U() {
-      const url = prompt("Enter custom M3U URL:", M3U_DEFAULT);
-      if (url) loadM3U(url);
-    }
-
-    document.addEventListener("DOMContentLoaded", () => loadM3U(M3U_DEFAULT));
+    };
   </script>
 </body>
 </html>
