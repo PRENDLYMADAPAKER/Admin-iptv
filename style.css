@@ -6,11 +6,50 @@ body {
   overflow-x: hidden;
 }
 
-#video-player-container {
+/* HEADER */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #1c1c1c;
+  padding: 10px 20px;
   position: sticky;
   top: 0;
+  z-index: 1001;
+}
+
+/* Logo */
+.logo {
+  width: 120px;
+  height: auto;
+}
+
+/* Clock in center */
+#clock {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  flex-grow: 1;
+  color: #ccc;
+}
+
+/* Logout Button */
+#logout-btn {
+  background-color: crimson;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+#logout-btn:hover {
+  background-color: #ff2f3f;
+}
+
+/* Video Player */
+#video-player-container {
   background-color: #000;
-  z-index: 10;
   text-align: center;
   padding: 10px 0;
 }
@@ -23,6 +62,7 @@ body {
   background: black;
 }
 
+/* Now Playing */
 #now-playing {
   display: flex;
   align-items: center;
@@ -36,6 +76,7 @@ body {
   margin-right: 8px;
 }
 
+/* Search and Filter */
 #search-container {
   display: flex;
   flex-direction: column;
@@ -61,6 +102,7 @@ body {
   color: white;
 }
 
+/* Channel Grid */
 #channel-grid {
   overflow-x: auto;
   white-space: nowrap;
@@ -102,19 +144,7 @@ body {
   color: gold;
 }
 
-#logout-btn {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  background-color: crimson;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  cursor: pointer;
-  z-index: 1000;
-}
-
+/* Responsive Tweaks */
 @media (min-width: 768px) {
   #video-player {
     height: 400px;
