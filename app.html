@@ -1,180 +1,204 @@
+<!-- app.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>IPTV Premium</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       margin: 0;
-      font-family: 'Roboto', sans-serif;
-      background-color: #121212;
-      color: #fff;
-      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      background: #121212;
+      color: white;
     }
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       background: #1f1f1f;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       padding: 10px 20px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
     #logo {
-      font-size: 1.2em;
+      font-size: 1.4em;
+      color: #ff5722;
       font-weight: bold;
-      color: orange;
     }
     #clock {
       font-size: 1em;
     }
-    #player {
+    #video-player {
       width: 100%;
       height: 220px;
       background: black;
     }
-    #now-playing {
-      padding: 8px 16px;
-      background: #242424;
-      font-weight: bold;
+    #now-section {
       display: flex;
       align-items: center;
-      gap: 10px;
+      background: #222;
+      padding: 10px;
+    }
+    #channel-icon {
+      width: 40px;
+      height: 40px;
+      margin-right: 10px;
+      border-radius: 6px;
+    }
+    #now-playing {
+      font-size: 1.2em;
     }
     #epg-now {
-      color: #ccc;
       font-size: 0.9em;
+      color: #aaa;
     }
     #controls {
-      padding: 10px;
       display: flex;
       gap: 10px;
-      justify-content: space-between;
-      background: #1c1c1c;
+      padding: 10px;
     }
-    #search, #category-select {
-      flex: 1;
+    input, select {
       padding: 8px;
-      border-radius: 8px;
+      font-size: 1em;
+      border-radius: 6px;
       border: none;
-      background: #333;
-      color: white;
+      width: 100%;
+      max-width: 180px;
     }
     #channel-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       padding: 10px;
-      overflow-x: hidden;
     }
     .channel-card {
-      background: #2c2c2c;
-      padding: 8px;
+      background: #1e1e1e;
       border-radius: 10px;
-      box-shadow: 0 0 5px #000;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      padding: 10px;
+      text-align: center;
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.1);
     }
     .channel-card img {
-      max-width: 100%;
+      width: 100%;
       height: 100px;
       object-fit: contain;
       border-radius: 6px;
       background: #000;
     }
-    .channel-name {
-      margin-top: 5px;
-      font-size: 0.9em;
-      text-align: center;
+    .channel-card span {
+      display: block;
+      margin: 5px 0;
+      font-size: 0.95em;
     }
-    .fav-btn {
-      margin-top: 4px;
-      font-size: 1.2em;
-      color: gold;
-    }
-    #pagination {
-      text-align: center;
-      margin: 10px;
-    }
-    #pagination button {
-      padding: 8px 12px;
-      background: #444;
+    .channel-card button {
+      background: none;
       border: none;
-      color: white;
-      border-radius: 6px;
-      margin: 0 5px;
+      color: #ff0;
+      font-size: 1.4em;
     }
-    #settings-btn, #logout-btn {
+    #settings-btn {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      padding: 10px 14px;
-      background: orange;
-      color: black;
-      font-weight: bold;
-      border-radius: 50%;
+      background: #ff5722;
       border: none;
-      font-size: 1.2em;
-      box-shadow: 0 0 10px #000;
+      padding: 12px 16px;
+      border-radius: 50%;
+      font-size: 20px;
+      color: white;
       cursor: pointer;
-    }
-    #logout-btn {
-      bottom: 80px;
-      background: crimson;
-    }
-    #buffering {
-      position: absolute;
-      top: 220px;
-      left: 0;
-      right: 0;
-      background: rgba(0,0,0,0.8);
-      text-align: center;
-      padding: 20px;
-      font-size: 1.2em;
-      display: none;
     }
   </style>
 </head>
 <body>
 
   <header>
-    <div id="logo">📺 IPTV Premium</div>
+    <div id="logo">IPTV Premium</div>
     <div id="clock">--:--</div>
   </header>
 
-  <div id="player">
-    <video id="video" controls autoplay muted></video>
-    <div id="buffering">🔄 Buffering...</div>
-  </div>
+  <video id="video-player" controls autoplay></video>
 
-  <div id="now-playing">
-    <img id="channel-icon" src="" width="36" height="36">
+  <div id="now-section">
+    <img id="channel-icon" src="" alt="Logo">
     <div>
-      <div id="channel-title">Now Playing: ---</div>
-      <div id="epg-now"></div>
+      <div id="now-playing">Now Playing</div>
+      <div id="epg-now">Loading EPG...</div>
     </div>
   </div>
 
   <div id="controls">
-    <input type="text" id="search" placeholder="Search channel...">
-    <select id="category-select"></select>
+    <input type="text" id="search" placeholder="Search channels...">
+    <select id="category-filter">
+      <option value="all">All Categories</option>
+      <option value="favorites">Favorites</option>
+    </select>
+    <input type="text" id="custom-m3u" placeholder="Paste M3U URL" />
+    <button onclick="importM3U()">Import</button>
+    <button onclick="logout()">Logout</button>
   </div>
 
   <div id="channel-grid"></div>
 
-  <div id="pagination">
-    <button onclick="prevPage()">⬅ Prev</button>
-    <button onclick="nextPage()">Next ➡</button>
-  </div>
+  <button id="settings-btn" onclick="refreshAll()">⟳</button>
 
-  <button id="settings-btn" onclick="importCustomM3U()">⚙️</button>
-  <button id="logout-btn" onclick="logout()">🚪</button>
+  <script src="iptv-core.js"></script>
+  <script>
+    // Live Clock
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById("clock").textContent =
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }, 1000);
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    // Search & Category Filter
+    document.getElementById("search").addEventListener("input", renderChannels);
+    document.getElementById("category-filter").addEventListener("change", renderChannels);
+
+    // Swipe Navigation
+    let startX = 0;
+    document.getElementById("channel-grid").addEventListener("touchstart", e => {
+      startX = e.touches[0].clientX;
+    });
+    document.getElementById("channel-grid").addEventListener("touchend", e => {
+      const endX = e.changedTouches[0].clientX;
+      if (endX < startX - 50) {
+        currentIndex = Math.min(currentIndex + 2, channels.length - 2);
+        renderChannels();
+      } else if (endX > startX + 50) {
+        currentIndex = Math.max(currentIndex - 2, 0);
+        renderChannels();
+      }
+    });
+
+    // Custom M3U Import
+    function importM3U() {
+      const url = document.getElementById("custom-m3u").value.trim();
+      if (url) {
+        localStorage.setItem("customM3U", url);
+        location.reload();
+      }
+    }
+
+    // Logout (Firebase)
+    function logout() {
+      if (firebase && firebase.auth) {
+        firebase.auth().signOut().then(() => {
+          location.href = "index.html";
+        });
+      } else {
+        location.href = "index.html";
+      }
+    }
+
+    // Refresh button
+    function refreshAll() {
+      location.reload();
+    }
+  </script>
+
+  <!-- Firebase (optional if logout used) -->
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
@@ -183,21 +207,7 @@
       appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    auth.onAuthStateChanged(user => {
-      if (!user) {
-        window.location.href = "index.html";
-      }
-    });
-
-    function logout() {
-      firebase.auth().signOut().then(() => {
-        alert("Logged out!");
-        location.href = "index.html";
-      });
-    }
   </script>
-  <script src="iptv-core.js"></script>
+
 </body>
 </html>
