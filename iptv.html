@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPTV App</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script src="firebase.js"></script>
+</head>
+<body>
+  <!-- Video Player -->
+  <div id="video-player-container">
+    <video id="video-player" controls autoplay></video>
+    <div id="now-playing">
+      <img id="now-playing-icon" src="logo.png" alt="Channel Icon" />
+      <span id="now-playing-name">Now Playing: </span>
+    </div>
+  </div>
+
+  <!-- Search and Category -->
+  <div id="search-container">
+    <input type="text" id="search-bar" placeholder="Search channels..." />
+    <select id="category-filter"></select>
+  </div>
+
+  <!-- Channel Grid Carousel -->
+  <div id="channel-carousel">
+    <div id="channel-grid" class="swiper-container"></div>
+  </div>
+
+  <!-- Logout Button -->
+  <button id="logout-btn">Logout</button>
+
+  <script src="iptv.js"></script>
+</body>
+  </html>
