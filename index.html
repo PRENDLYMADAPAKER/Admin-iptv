@@ -5,236 +5,187 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Premium</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
-    body { background: #111; color: white; overflow-x: hidden; }
-    header { padding: 10px; background: #222; display: flex; justify-content: space-between; align-items: center; }
-    #clock { font-size: 16px; }
-    #videoPlayer { width: 100%; height: 220px; background: black; }
-    #nowPlaying { padding: 10px; background: #1e1e1e; font-size: 14px; }
-    #epgInfo { font-size: 13px; padding: 0 10px 10px; color: #bbb; }
-    #controls { display: flex; gap: 10px; padding: 10px; background: #111; }
-    #searchInput, #categorySelect { flex: 1; padding: 6px; border-radius: 5px; border: none; }
-    #channelGrid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 10px; gap: 10px; }
-    .channelCard {
-      flex: 0 0 calc(50% - 10px);
-      scroll-snap-align: center;
-      background: #222;
-      border-radius: 10px;
-      padding: 10px;
-      text-align: center;
-      position: relative;
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
     }
-    .favorite-btn {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: transparent;
-      border: none;
-      color: gold;
-      font-size: 18px;
-    }
-    .hidden { display: none; }
-    #authContainer {
-      display: flex;
-      flex-direction: column;
+    .auth-container, .app-container {
+      display: none;
       padding: 20px;
-      max-width: 300px;
-      margin: 50px auto;
-      background: #222;
-      border-radius: 10px;
     }
-    #authContainer input, #authContainer button {
+    .visible {
+      display: block !important;
+    }
+    .form-box {
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 300px;
+      margin: auto;
+      margin-top: 80px;
+      box-shadow: 0 0 10px #000;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
       margin: 8px 0;
-      padding: 8px;
-      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #e50914;
+      color: white;
       border: none;
       border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
     }
-    #authContainer button { background: orange; color: #000; font-weight: bold; }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      display: none;
+      z-index: 9999;
+    }
+    video {
+      width: 100%;
+      max-height: 40vh;
+      background: black;
+    }
+    header {
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #000;
+    }
+    .clock {
+      font-size: 16px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <!-- Firebase Auth UI -->
-  <div id="authContainer">
-    <h2 style="margin-bottom: 10px;">IPTV Premium Login</h2>
-    <input type="email" id="emailInput" placeholder="Email">
-    <input type="password" id="passwordInput" placeholder="Password">
+
+<!-- 🔐 LOGIN / REGISTER PAGE -->
+<div class="auth-container visible" id="authContainer">
+  <div class="form-box">
+    <h2 style="text-align:center;">IPTV Premium</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
     <button onclick="login()">Login</button>
     <button onclick="register()">Register</button>
-    <p id="authMessage"></p>
   </div>
+</div>
 
-  <!-- Main App UI -->
-  <div id="appContainer" class="hidden">
-    <header>
-      <img src="https://i.imgur.com/BKLNnG0.png" alt="IPTV Premium" style="height:30px;">
-      <div id="clock">--:--</div>
-    </header>
+<!-- 📺 IPTV MAIN APP -->
+<div class="app-container" id="appContainer">
+  <header>
+    <h3>📺 IPTV Premium</h3>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+  <video id="videoPlayer" controls autoplay></video>
+  <div id="nowPlaying" style="margin-top:10px;">Now Playing: <span id="nowChannelName">-</span></div>
+  <!-- More IPTV features like EPG, search, grid, etc., will go here -->
+</div>
 
-    <video id="videoPlayer" controls autoplay></video>
-    <div id="nowPlaying">Now Playing: <span id="nowTitle"></span></div>
-    <div id="epgInfo">
-      <div><b>Now:</b> <span id="epgNow">-</span></div>
-      <div><b>Next:</b> <span id="epgNext">-</span></div>
-      <div><b>Later:</b> <span id="epgLater">-</span></div>
-    </div>
+<!-- ✅ TOAST -->
+<div id="toast" class="toast"></div>
 
-    <div id="controls">
-      <input type="text" id="searchInput" placeholder="Search channels...">
-      <select id="categorySelect"><option value="all">All</option></select>
-    </div>
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 
-    <div id="channelGrid"></div>
-  </div>
+<!-- 📦 IPTV Logic Script -->
+<script>
+  // ✅ Your Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+    authDomain: "iptv-log-in.firebaseapp.com",
+    projectId: "iptv-log-in",
+    appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
-      authDomain: "iptv-log-in.firebaseapp.com",
-      projectId: "iptv-log-in",
-      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById('authContainer').classList.add('hidden');
-        document.getElementById('appContainer').classList.remove('hidden');
-        initApp();
-      } else {
-        document.getElementById('authContainer').classList.remove('hidden');
-        document.getElementById('appContainer').classList.add('hidden');
-      }
-    });
-
-    function login() {
-      const email = emailInput.value;
-      const pass = passwordInput.value;
-      auth.signInWithEmailAndPassword(email, pass)
-        .catch(err => authMessage.textContent = err.message);
+  // ✅ Auth Listeners
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      showToast("Login Successful!");
+      document.getElementById("authContainer").classList.remove("visible");
+      document.getElementById("appContainer").classList.add("visible");
+      loadIPTV();
+    } else {
+      document.getElementById("authContainer").classList.add("visible");
+      document.getElementById("appContainer").classList.remove("visible");
     }
+  });
 
-    function register() {
-      const email = emailInput.value;
-      const pass = passwordInput.value;
-      auth.createUserWithEmailAndPassword(email, pass)
-        .catch(err => authMessage.textContent = err.message);
-    }
-  </script>
+  function login() {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    auth.signInWithEmailAndPassword(email, password)
+      .catch(err => alert(err.message));
+  }
 
-  <!-- IPTV Logic -->
-  <script>
+  function register() {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(() => showToast("Registration Successful!"))
+      .catch(err => alert(err.message));
+  }
+
+  // ✅ Toast function
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.innerText = msg;
+    toast.style.display = "block";
+    setTimeout(() => toast.style.display = "none", 3000);
+  }
+
+  // 🕐 Live Clock
+  setInterval(() => {
+    const now = new Date();
+    document.getElementById("clock").innerText =
+      now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  }, 1000);
+
+  // 📡 Load IPTV after auth
+  function loadIPTV() {
     const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
-    const epgUrl = "https://tinyurl.com/DrewLive002-epg";
-
-    let channels = [], favorites = [], currentChannelIndex = 0;
-
-    function initApp() {
-      updateClock();
-      setInterval(updateClock, 1000);
-      loadChannels();
-    }
-
-    function updateClock() {
-      const now = new Date();
-      document.getElementById("clock").textContent =
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    async function loadChannels() {
-      try {
-        const res = await fetch(m3uUrl);
-        const text = await res.text();
-        const lines = text.split("\n");
-        channels = [];
+    fetch(m3uUrl)
+      .then(res => res.text())
+      .then(data => {
+        const lines = data.split("\n");
+        const channelList = [];
         for (let i = 0; i < lines.length; i++) {
           if (lines[i].startsWith("#EXTINF")) {
             const name = lines[i].split(",")[1];
-            const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
-            const group = lines[i].match(/group-title="([^"]+)"/)?.[1] || "Other";
-            const url = lines[i + 1];
-            channels.push({ name, logo, url, group });
+            const url = lines[i+1];
+            channelList.push({ name, url });
           }
         }
-        renderChannels();
-      } catch (e) {
-        alert("Failed to load channels.");
-      }
-    }
-
-    function renderChannels() {
-      const grid = document.getElementById("channelGrid");
-      const keyword = searchInput.value.toLowerCase();
-      const selectedCategory = categorySelect.value;
-
-      grid.innerHTML = "";
-      const filtered = channels.filter(ch =>
-        ch.name.toLowerCase().includes(keyword) &&
-        (selectedCategory === "all" || ch.group === selectedCategory)
-      );
-
-      // Update categories
-      const categories = [...new Set(channels.map(c => c.group))];
-      categorySelect.innerHTML = `<option value="all">All</option>` + categories.map(c =>
-        `<option value="${c}">${c}</option>`).join("");
-
-      filtered.forEach((ch, index) => {
-        const card = document.createElement("div");
-        card.className = "channelCard";
-        card.innerHTML = `
-          <button class="favorite-btn" onclick="toggleFavorite('${ch.name}')">⭐</button>
-          <img src="${ch.logo}" alt="${ch.name}" style="width: 100%; border-radius: 5px;">
-          <div>${ch.name}</div>
-        `;
-        card.onclick = () => playChannel(index, filtered);
-        grid.appendChild(card);
+        if (channelList.length > 0) {
+          document.getElementById("nowChannelName").innerText = channelList[0].name;
+          const video = document.getElementById("videoPlayer");
+          video.src = channelList[0].url;
+        }
       });
+  }
 
-      if (filtered.length > 0) playChannel(0, filtered);
-    }
+  // ⏱️ Auto-refresh every 5 minutes
+  setInterval(loadIPTV, 5 * 60 * 1000);
+</script>
 
-    function playChannel(index, list) {
-      const ch = list[index];
-      document.getElementById("videoPlayer").src = ch.url;
-      document.getElementById("nowTitle").textContent = ch.name;
-      loadEPG(ch.name);
-    }
-
-    function toggleFavorite(name) {
-      if (favorites.includes(name)) {
-        favorites = favorites.filter(n => n !== name);
-      } else {
-        favorites.push(name);
-      }
-      renderChannels();
-    }
-
-    async function loadEPG(channelName) {
-      try {
-        const res = await fetch(epgUrl);
-        const xml = await res.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, "text/xml");
-        const progs = [...doc.querySelectorAll("programme")].filter(p =>
-          p.getAttribute("channel").toLowerCase().includes(channelName.toLowerCase())
-        );
-        document.getElementById("epgNow").textContent = progs[0]?.querySelector("title")?.textContent || "-";
-        document.getElementById("epgNext").textContent = progs[1]?.querySelector("title")?.textContent || "-";
-        document.getElementById("epgLater").textContent = progs[2]?.querySelector("title")?.textContent || "-";
-      } catch (e) {
-        document.getElementById("epgNow").textContent = "N/A";
-        document.getElementById("epgNext").textContent = "N/A";
-        document.getElementById("epgLater").textContent = "N/A";
-      }
-    }
-
-    searchInput.oninput = renderChannels;
-    categorySelect.onchange = renderChannels;
-  </script>
 </body>
 </html>
