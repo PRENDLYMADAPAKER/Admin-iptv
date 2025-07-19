@@ -37,7 +37,16 @@ function parseM3U(data) {
 }
 
 function loadVideo(channel) {
-  videoPlayer.src = channel.url;
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(channel.url);
+    hls.attachMedia(videoPlayer);
+  } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+    videoPlayer.src = channel.url;
+  } else {
+    alert("Your browser does not support HLS streaming.");
+  }
+
   channelName.textContent = channel.name;
   channelIcon.src = channel.logo || "";
 }
