@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login - IPTV Premium</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-  <script src="firebase.js" defer></script>
+  <script type="module" src="login.js" defer></script>
   <style>
     body {
       display: flex;
@@ -19,7 +17,7 @@
       font-family: Arial, sans-serif;
       color: #fff;
       opacity: 0;
-      animation: fadeIn 1s forwards;
+      animation: fadeIn 0.8s forwards;
     }
 
     @keyframes fadeIn {
@@ -120,12 +118,12 @@
     <img src="logo.png" alt="Logo" />
     <h2>Login to IPTV</h2>
     <input type="email" id="email" placeholder="Email" />
-    
+
     <div class="password-field">
       <input type="password" id="password" placeholder="Password" />
       <span class="toggle-password" onclick="togglePassword()">Show</span>
     </div>
-    
+
     <button onclick="login()">
       Login
       <div class="spinner" id="spinner"></div>
@@ -154,6 +152,7 @@
 
       firebase.auth().signInWithEmailAndPassword(email, password)
         .then(() => {
+          spinner.style.display = "none";
           window.location.href = "index.html";
         })
         .catch((error) => {
@@ -163,4 +162,4 @@
     }
   </script>
 </body>
-      </html>
+</html>
