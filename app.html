@@ -1,59 +1,180 @@
-<!-- IPTV Premium Web App (with Firebase Auth, M3U + EPG, Full UI) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Premium</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background: #111; color: #fff; overflow-x: hidden; }
-    header { background: #222; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-    #clock { font-weight: bold; }
-    .player-container { width: 100%; background: #000; position: sticky; top: 0; z-index: 9; }
-    video { width: 100%; height: auto; background: #000; }
-    #now-playing { padding: 10px; background: #1a1a1a; display: flex; flex-direction: column; gap: 4px; }
-    #epg-guide { font-size: 0.9em; color: #ccc; }
-    .controls { display: flex; gap: 10px; padding: 10px; background: #1a1a1a; }
-    input, select, button { padding: 6px 10px; border: none; border-radius: 6px; }
-    .grid { display: flex; flex-wrap: wrap; justify-content: center; padding: 10px; gap: 10px; }
-    .channel { background: #222; border-radius: 10px; padding: 10px; width: 45%; cursor: pointer; text-align: center; box-shadow: 0 0 10px #000; }
-    .channel img { width: 100%; border-radius: 6px; }
-    .channel-name { margin-top: 5px; font-size: 0.9em; }
-    .toast { position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 10px 15px; border-radius: 6px; display: none; z-index: 999; }
-    #logoutBtn { background: #c00; color: #fff; }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #121212;
+      color: #fff;
+      overflow: hidden;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1f1f1f;
+      padding: 10px 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    #logo {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: orange;
+    }
+    #clock {
+      font-size: 1em;
+    }
+    #player {
+      width: 100%;
+      height: 220px;
+      background: black;
+    }
+    #now-playing {
+      padding: 8px 16px;
+      background: #242424;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #epg-now {
+      color: #ccc;
+      font-size: 0.9em;
+    }
+    #controls {
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      background: #1c1c1c;
+    }
+    #search, #category-select {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      background: #333;
+      color: white;
+    }
+    #channel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 10px;
+      overflow-x: hidden;
+    }
+    .channel-card {
+      background: #2c2c2c;
+      padding: 8px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px #000;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .channel-card img {
+      max-width: 100%;
+      height: 100px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #000;
+    }
+    .channel-name {
+      margin-top: 5px;
+      font-size: 0.9em;
+      text-align: center;
+    }
+    .fav-btn {
+      margin-top: 4px;
+      font-size: 1.2em;
+      color: gold;
+    }
+    #pagination {
+      text-align: center;
+      margin: 10px;
+    }
+    #pagination button {
+      padding: 8px 12px;
+      background: #444;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      margin: 0 5px;
+    }
+    #settings-btn, #logout-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 14px;
+      background: orange;
+      color: black;
+      font-weight: bold;
+      border-radius: 50%;
+      border: none;
+      font-size: 1.2em;
+      box-shadow: 0 0 10px #000;
+      cursor: pointer;
+    }
+    #logout-btn {
+      bottom: 80px;
+      background: crimson;
+    }
+    #buffering {
+      position: absolute;
+      top: 220px;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.8);
+      text-align: center;
+      padding: 20px;
+      font-size: 1.2em;
+      display: none;
+    }
   </style>
 </head>
 <body>
+
   <header>
-    <h1>IPTV Premium</h1>
-    <span id="clock"></span>
-    <button id="logoutBtn">Logout</button>
+    <div id="logo">📺 IPTV Premium</div>
+    <div id="clock">--:--</div>
   </header>
 
-  <div class="player-container">
-    <video id="videoPlayer" controls autoplay></video>
+  <div id="player">
+    <video id="video" controls autoplay muted></video>
+    <div id="buffering">🔄 Buffering...</div>
   </div>
 
   <div id="now-playing">
-    <div><strong>Now Playing:</strong> <span id="nowTitle">Loading...</span></div>
-    <div id="epg-guide">Next: <span id="nextTitle"></span> | Later: <span id="laterTitle"></span></div>
+    <img id="channel-icon" src="" width="36" height="36">
+    <div>
+      <div id="channel-title">Now Playing: ---</div>
+      <div id="epg-now"></div>
+    </div>
   </div>
 
-  <div class="controls">
-    <input type="text" id="searchInput" placeholder="Search channels...">
-    <select id="categoryFilter"></select>
-    <input type="text" id="customM3U" placeholder="Custom M3U URL">
-    <button onclick="importM3U()">Import</button>
+  <div id="controls">
+    <input type="text" id="search" placeholder="Search channel...">
+    <select id="category-select"></select>
   </div>
 
-  <div class="grid" id="channelGrid"></div>
+  <div id="channel-grid"></div>
 
-  <div class="toast" id="toast"></div>
+  <div id="pagination">
+    <button onclick="prevPage()">⬅ Prev</button>
+    <button onclick="nextPage()">Next ➡</button>
+  </div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <button id="settings-btn" onclick="importCustomM3U()">⚙️</button>
+  <button id="logout-btn" onclick="logout()">🚪</button>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
@@ -65,111 +186,18 @@
     const auth = firebase.auth();
 
     auth.onAuthStateChanged(user => {
-      if (!user) location.href = "index.html";
+      if (!user) {
+        window.location.href = "index.html";
+      }
     });
 
-    document.getElementById("logoutBtn").onclick = () => auth.signOut();
-  </script>
-
-  <script>
-    const m3uURL = localStorage.getItem("customM3U") || "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
-    const epgURL = "https://tinyurl.com/DrewLive002-epg";
-    const video = document.getElementById("videoPlayer");
-    const toast = document.getElementById("toast");
-
-    const showToast = (msg) => {
-      toast.innerText = msg;
-      toast.style.display = "block";
-      setTimeout(() => toast.style.display = "none", 3000);
-    };
-
-    const clock = document.getElementById("clock");
-    setInterval(() => clock.innerText = new Date().toLocaleTimeString(), 1000);
-
-    function importM3U() {
-      const url = document.getElementById("customM3U").value;
-      if (url) {
-        localStorage.setItem("customM3U", url);
-        location.reload();
-      }
-    }
-
-    function loadChannels() {
-      fetch(m3uURL)
-        .then(res => res.text())
-        .then(data => {
-          const lines = data.split('\n');
-          let channels = [];
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].startsWith("#EXTINF")) {
-              const nameMatch = lines[i].match(/,(.*)/);
-              const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
-              const groupMatch = lines[i].match(/group-title="(.*?)"/);
-              const name = nameMatch ? nameMatch[1] : "Unknown";
-              const logo = logoMatch ? logoMatch[1] : "";
-              const group = groupMatch ? groupMatch[1] : "Others";
-              const url = lines[i + 1];
-              channels.push({ name, logo, group, url });
-            }
-          }
-
-          displayChannels(channels);
-          buildCategoryFilter(channels);
-
-          const last = localStorage.getItem("lastPlayed");
-          if (last) {
-            const ch = channels.find(c => c.name === last);
-            if (ch) playChannel(ch);
-          }
-        });
-    }
-
-    function displayChannels(list) {
-      const grid = document.getElementById("channelGrid");
-      const search = document.getElementById("searchInput").value.toLowerCase();
-      const category = document.getElementById("categoryFilter").value;
-      grid.innerHTML = "";
-
-      list.filter(c =>
-        c.name.toLowerCase().includes(search) &&
-        (category === "All" || c.group === category)
-      ).forEach(ch => {
-        const div = document.createElement("div");
-        div.className = "channel";
-        div.innerHTML = `<img src="${ch.logo}" onerror="this.src='';"><div class="channel-name">${ch.name}</div>`;
-        div.onclick = () => playChannel(ch);
-        grid.appendChild(div);
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        alert("Logged out!");
+        location.href = "index.html";
       });
     }
-
-    function buildCategoryFilter(list) {
-      const select = document.getElementById("categoryFilter");
-      const groups = ["All", ...new Set(list.map(c => c.group))];
-      select.innerHTML = groups.map(g => `<option value="${g}">${g}</option>`).join("");
-      select.onchange = () => displayChannels(list);
-      document.getElementById("searchInput").oninput = () => displayChannels(list);
-    }
-
-    function playChannel(ch) {
-      video.src = ch.url;
-      localStorage.setItem("lastPlayed", ch.name);
-      document.getElementById("nowTitle").innerText = ch.name;
-      fetch(epgURL).then(r => r.text()).then(epg => {
-        const parser = new DOMParser().parseFromString(epg, "text/xml");
-        const progs = [...parser.querySelectorAll("programme")].filter(p =>
-          p.getAttribute("channel").toLowerCase().includes(ch.name.toLowerCase())
-        );
-        const now = progs[0]?.getElementsByTagName("title")[0]?.textContent || "N/A";
-        const next = progs[1]?.getElementsByTagName("title")[0]?.textContent || "N/A";
-        const later = progs[2]?.getElementsByTagName("title")[0]?.textContent || "N/A";
-        document.getElementById("nowTitle").innerText = now;
-        document.getElementById("nextTitle").innerText = next;
-        document.getElementById("laterTitle").innerText = later;
-      });
-    }
-
-    loadChannels();
-    setInterval(loadChannels, 300000); // Auto-refresh every 5 mins
   </script>
+  <script src="iptv-core.js"></script>
 </body>
 </html>
