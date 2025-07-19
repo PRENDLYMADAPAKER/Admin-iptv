@@ -3,37 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IPTV Premium</title>
+  <title>IPTV Web App</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-  <script src="firebase.js"></script>
 </head>
 <body>
   <header>
-    <img src="logo.png" class="logo" />
-    <div id="clock"></div>
+    <div class="channel-info">
+      <img id="channel-icon" src="" alt="Channel Logo" />
+      <span id="channel-name">Loading...</span>
+    </div>
     <button id="logout-btn">Logout</button>
   </header>
 
   <main>
-    <div id="video-container">
-      <video id="video-player" controls autoplay></video>
-      <div id="now-playing">
-        <img id="channel-icon" src="" alt="Icon" />
-        <span id="channel-name">Now Playing</span>
-        <div id="epg-info"></div>
-      </div>
-    </div>
+    <video id="video-player" controls autoplay></video>
 
     <div class="controls">
       <input type="text" id="search-bar" placeholder="Search channels..." />
-      <select id="category-filter"></select>
+      <select id="category-filter">
+        <option>All</option>
+      </select>
     </div>
 
-    <div id="channel-grid"></div>
+    <div id="channel-grid" class="channel-grid"></div>
   </main>
 
+  <!-- ✅ Load Firebase for logout functionality -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+      authDomain: "iptv-log-in.firebaseapp.com",
+      projectId: "iptv-log-in",
+      storageBucket: "iptv-log-in.firebasestorage.app",
+      messagingSenderId: "820026131349",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c",
+      measurementId: "G-4Y8T6J595Z"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <!-- ✅ HLS.js must come BEFORE iptv.js -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <!-- ✅ Your IPTV functionality -->
   <script src="iptv.js"></script>
 </body>
 </html>
