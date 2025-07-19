@@ -3,179 +3,146 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPTV Premium App</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" />
+  <title>IPTV Premium</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
-    }
     body {
-      background-color: #111;
-      color: #fff;
-      overflow-x: hidden;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #0e0e0e;
+      color: white;
     }
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #000;
       padding: 10px 15px;
-    }
-    #logo {
-      height: 40px;
+      background: #111;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
     }
     #clock {
-      font-size: 14px;
+      font-size: 1rem;
     }
-    #video-player {
+    #logoutBtn {
+      background: crimson;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #videoPlayer {
       width: 100%;
       height: 220px;
-      background: #000;
+      background: black;
     }
-    #now-playing {
-      padding: 8px 12px;
-      background: #222;
-      font-size: 14px;
-    }
-    #epg {
-      padding: 8px 12px;
-      background: #1c1c1c;
-      font-size: 13px;
-    }
-    #channel-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      padding: 12px;
-    }
-    .channel-card {
-      background: #333;
+    #nowPlaying {
       padding: 10px;
-      border-radius: 12px;
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+    }
+    #searchBar {
+      display: flex;
+      padding: 10px;
+      background: #111;
+    }
+    #searchInput {
+      flex: 1;
+      padding: 8px;
+      border-radius: 4px;
+      border: none;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 10px;
+    }
+    .channel {
+      background: #222;
+      padding: 10px;
+      border-radius: 8px;
       text-align: center;
     }
-    .channel-card img {
-      width: 100%;
-      border-radius: 8px;
-    }
-    .channel-card button {
-      margin-top: 6px;
-      background: #ff9900;
-      border: none;
-      color: #000;
-      padding: 4px 10px;
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 10px 20px;
       border-radius: 6px;
-      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      z-index: 9999;
+    }
+    .toast.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
   <header>
-    <img id="logo" src="logo.png" alt="IPTV Premium" />
-    <div id="clock"></div>
+    <div><strong>IPTV Premium</strong></div>
+    <div id="clock">--:--:--</div>
+    <button id="logoutBtn">Logout</button>
   </header>
-  <video id="video-player" controls autoplay muted></video>
-  <div id="now-playing">Now Playing: Loading...</div>
-  <div id="epg">EPG: Loading...</div>
-  <div id="channel-grid"></div>
 
-  <!-- Firebase CDN -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <div id="videoPlayer"></div>
 
+  <div id="nowPlaying">
+    <div><strong>Now Playing:</strong> Loading...</div>
+    <div>Now • Next • Later</div>
+  </div>
+
+  <div id="searchBar">
+    <input id="searchInput" type="text" placeholder="Search channels..." />
+  </div>
+
+  <div class="grid" id="channelGrid">
+    <!-- Dummy channels -->
+    <div class="channel">Channel 1</div>
+    <div class="channel">Channel 2</div>
+    <div class="channel">Channel 3</div>
+    <div class="channel">Channel 4</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-auth-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
       authDomain: "iptv-log-in.firebaseapp.com",
       projectId: "iptv-log-in",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-    firebase.auth().onAuthStateChanged(user => {
-      if (!user) {
-        window.location.href = "login.html";
-      }
+    auth.onAuthStateChanged(user => {
+      if (!user) window.location.href = 'index.html';
     });
-  </script>
 
-  <script>
-    // Live Clock
-    setInterval(() => {
-      const now = new Date();
-      document.getElementById('clock').innerText = now.toLocaleTimeString();
-    }, 1000);
-
-    const videoPlayer = document.getElementById('video-player');
-    const nowPlaying = document.getElementById('now-playing');
-    const epg = document.getElementById('epg');
-    const grid = document.getElementById('channel-grid');
-
-    const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
-    const epgUrl = "https://tinyurl.com/DrewLive002-epg";
-
-    async function loadChannels() {
-      const res = await fetch(m3uUrl);
-      const text = await res.text();
-      const lines = text.split('\n');
-      let currentChannel = null;
-
-      lines.forEach(line => {
-        if (line.startsWith('#EXTINF')) {
-          const nameMatch = line.match(/,(.*)/);
-          const logoMatch = line.match(/tvg-logo="(.*?)"/);
-          currentChannel = {
-            name: nameMatch ? nameMatch[1] : 'Unknown',
-            logo: logoMatch ? logoMatch[1] : '',
-          };
-        } else if (line.startsWith('http') && currentChannel) {
-          const url = line.trim();
-          const card = document.createElement('div');
-          card.className = 'channel-card';
-          card.innerHTML = `
-            <img src="${currentChannel.logo}" alt="logo">
-            <div>${currentChannel.name}</div>
-            <button>Watch</button>
-          `;
-          card.querySelector('button').onclick = () => {
-            videoPlayer.src = url;
-            nowPlaying.innerText = 'Now Playing: ' + currentChannel.name;
-            loadEPG(currentChannel.name);
-            localStorage.setItem('lastChannel', url);
-          };
-          grid.appendChild(card);
-          currentChannel = null;
-        }
-      });
-    }
-
-    async function loadEPG(channelName) {
-      try {
-        const res = await fetch(epgUrl);
-        const xml = await res.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, "text/xml");
-        const all = [...doc.querySelectorAll('programme')];
-        const match = all.filter(p => p.getAttribute('channel').toLowerCase().includes(channelName.toLowerCase()));
-        if (match.length > 0) {
-          const now = match[0].querySelector('title')?.textContent;
-          const next = match[1]?.querySelector('title')?.textContent || '-';
-          const later = match[2]?.querySelector('title')?.textContent || '-';
-          epg.innerText = `EPG: Now - ${now} | Next - ${next} | Later - ${later}`;
-        } else {
-          epg.innerText = 'EPG: No data';
-        }
-      } catch (e) {
-        epg.innerText = 'EPG: Error loading';
-      }
-    }
-
-    window.onload = () => {
-      const last = localStorage.getItem('lastChannel');
-      if (last) videoPlayer.src = last;
-      loadChannels();
+    document.getElementById("logoutBtn").onclick = () => {
+      auth.signOut();
     };
+
+    function updateClock() {
+      const clock = document.getElementById("clock");
+      const now = new Date();
+      clock.textContent = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
   </script>
 </body>
 </html>
