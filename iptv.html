@@ -1,12 +1,10 @@
-<!-- iptv.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Web App</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="logo.png" />
 </head>
 <body>
   <header>
@@ -19,29 +17,25 @@
   <main>
     <div class="now-playing">
       <img id="channel-icon" src="" alt="Channel Icon" />
-      <span id="channel-name">Loading...</span>
+      <span id="channel-name">Now Playing...</span>
     </div>
 
     <video id="video-player" controls autoplay></video>
 
-    <div id="carousel-nav">
-      <button id="prev-channel">⟨</button>
-      <button id="next-channel">⟩</button>
-    </div>
+    <div id="channel-carousel" class="carousel-container"></div>
 
     <div class="controls">
       <input type="text" id="search-bar" placeholder="Search channels..." />
       <select id="category-filter">
-        <option value="All">All</option>
-        <option value="Favorites">Favorites</option>
-        <option value="UDPTV Live Stream">UDPTV Live Stream</option>
-        <option value="TheTVApp">TheTVApp</option>
+        <option>All</option>
+        <option>Favorites</option>
       </select>
     </div>
 
     <div id="channel-grid" class="channel-grid"></div>
   </main>
 
+  <!-- Firebase Auth -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
   <script>
@@ -57,137 +51,10 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 
+  <!-- HLS.js for streaming -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <!-- IPTV Logic -->
   <script src="iptv.js"></script>
 </body>
 </html>
-
-
-// iptv.js
-const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
-let channels = [];
-let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-let currentIndex = 0;
-
-const videoPlayer = document.getElementById("video-player");
-const channelGrid = document.getElementById("channel-grid");
-const searchBar = document.getElementById("search-bar");
-const categoryFilter = document.getElementById("category-filter");
-const channelName = document.getElementById("channel-name");
-const channelIcon = document.getElementById("channel-icon");
-const logoutBtn = document.getElementById("logout-btn");
-const prevBtn = document.getElementById("prev-channel");
-const nextBtn = document.getElementById("next-channel");
-
-logoutBtn.onclick = () => firebase.auth().signOut().then(() => window.location.href = "login.html");
-
-function parseM3U(data) {
-  const lines = data.split("\n");
-  let current = {};
-  let list = [];
-
-  for (let line of lines) {
-    if (line.startsWith("#EXTINF")) {
-      const name = line.match(/,(.*)/)?.[1]?.trim();
-      const logo = line.match(/tvg-logo="(.*?)"/)?.[1] || "";
-      const group = line.match(/group-title="(.*?)"/)?.[1] || "Other";
-      current = { name, logo, group };
-    } else if (line.startsWith("http")) {
-      current.url = line.trim();
-      list.push(current);
-      current = {};
-    }
-  }
-  return list;
-}
-
-function loadVideo(channel) {
-  if (Hls.isSupported()) {
-    const hls = new Hls();
-    hls.loadSource(channel.url);
-    hls.attachMedia(videoPlayer);
-  } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-    videoPlayer.src = channel.url;
-  } else {
-    alert("Your browser does not support HLS.");
-  }
-  channelName.textContent = channel.name;
-  channelIcon.src = channel.logo || "";
-}
-
-function renderChannels(filtered) {
-  channelGrid.innerHTML = "";
-  filtered.forEach((channel, index) => {
-    const card = document.createElement("div");
-    card.className = "channel-card";
-
-    const img = document.createElement("img");
-    img.src = channel.logo || "";
-    card.appendChild(img);
-
-    const title = document.createElement("p");
-    title.textContent = channel.name;
-    card.appendChild(title);
-
-    const fav = document.createElement("span");
-    fav.innerHTML = favorites.includes(channel.url) ? "★" : "☆";
-    fav.className = "favorite";
-    fav.onclick = (e) => {
-      e.stopPropagation();
-      toggleFavorite(channel.url);
-      renderChannels(getFilteredChannels());
-    };
-    card.appendChild(fav);
-
-    card.onclick = () => {
-      currentIndex = channels.indexOf(channel);
-      loadVideo(channel);
-    };
-
-    channelGrid.appendChild(card);
-  });
-}
-
-function getFilteredChannels() {
-  const search = searchBar.value.toLowerCase();
-  const category = categoryFilter.value;
-
-  return channels.filter((c) => {
-    const matchesCategory = category === "All" || c.group === category || (category === "Favorites" && favorites.includes(c.url));
-    const matchesSearch = c.name.toLowerCase().includes(search);
-    return matchesCategory && matchesSearch;
-  });
-}
-
-function toggleFavorite(url) {
-  if (favorites.includes(url)) {
-    favorites = favorites.filter(f => f !== url);
-  } else {
-    favorites.push(url);
-  }
-  localStorage.setItem("favorites", JSON.stringify(favorites));
-}
-
-searchBar.addEventListener("input", () => renderChannels(getFilteredChannels()));
-categoryFilter.addEventListener("change", () => renderChannels(getFilteredChannels()));
-
-prevBtn.onclick = () => {
-  currentIndex = (currentIndex - 1 + channels.length) % channels.length;
-  loadVideo(channels[currentIndex]);
-};
-
-nextBtn.onclick = () => {
-  currentIndex = (currentIndex + 1) % channels.length;
-  loadVideo(channels[currentIndex]);
-};
-
-fetch(m3uUrl)
-  .then(res => res.text())
-  .then(data => {
-    channels = parseM3U(data);
-    renderChannels(channels);
-    if (channels.length > 0) {
-      currentIndex = 0;
-      loadVideo(channels[0]);
-    }
-  });
