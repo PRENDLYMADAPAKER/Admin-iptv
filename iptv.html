@@ -17,7 +17,7 @@
   <main>
     <div class="now-playing">
       <img id="channel-icon" src="" alt="Channel Icon" />
-      <span id="channel-name">Now Playing...</span>
+      <span id="channel-name">Loading...</span>
     </div>
 
     <video id="video-player" controls autoplay></video>
@@ -35,7 +35,7 @@
     <div id="channel-grid" class="channel-grid"></div>
   </main>
 
-  <!-- Firebase Auth -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
   <script>
@@ -51,10 +51,10 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 
-  <!-- HLS.js for streaming -->
+  <!-- HLS.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- IPTV Logic -->
+  <!-- IPTV Script -->
   <script src="iptv.js"></script>
 </body>
 </html>
