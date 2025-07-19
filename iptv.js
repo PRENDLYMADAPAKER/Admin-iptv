@@ -1,140 +1,145 @@
-// iptv.js
-
+const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
 let channels = [];
-let filteredChannels = [];
 let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+let currentChannelIndex = 0;
 
-const video = document.getElementById("video-player");
-const searchInput = document.getElementById("search-bar");
-const categoryFilter = document.getElementById("category-filter");
+const videoPlayer = document.getElementById("video-player");
 const channelGrid = document.getElementById("channel-grid");
-const nowPlayingName = document.getElementById("channel-name");
-const nowPlayingIcon = document.getElementById("channel-icon");
+const searchBar = document.getElementById("search-bar");
+const categoryFilter = document.getElementById("category-filter");
+const channelName = document.getElementById("channel-name");
+const channelIcon = document.getElementById("channel-icon");
 const logoutBtn = document.getElementById("logout-btn");
 const carousel = document.getElementById("channel-carousel");
 
-const M3U_URL = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
-
-logoutBtn.addEventListener("click", () => {
-  firebase.auth().signOut().then(() => {
-    window.location.href = "index.html";
-  });
-});
-
-searchInput.addEventListener("input", () => filterChannels());
-categoryFilter.addEventListener("change", () => filterChannels());
-
-function loadM3U(url) {
-  fetch(url)
-    .then(res => res.text())
-    .then(data => {
-      channels = parseM3U(data);
-      filteredChannels = [...channels];
-      renderChannels();
-      renderCarousel();
-      playChannel(filteredChannels[0]);
-    });
-}
+logoutBtn.onclick = () => {
+  firebase.auth().signOut().then(() => window.location.href = "login.html");
+};
 
 function parseM3U(data) {
   const lines = data.split("\n");
-  const result = [];
+  const list = [];
+  let current = {};
 
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("#EXTINF")) {
-      const name = lines[i].split(",").pop().trim();
-      const logo = lines[i].match(/tvg-logo="(.*?)"/);
-      const group = lines[i].match(/group-title="(.*?)"/);
-      const url = lines[i + 1];
-
-      result.push({
-        name,
-        url,
-        logo: logo ? logo[1] : "",
-        group: group ? group[1] : "Uncategorized",
-      });
+  for (let line of lines) {
+    if (line.startsWith("#EXTINF")) {
+      const name = line.match(/,(.*)/)?.[1]?.trim();
+      const logo = line.match(/tvg-logo="(.*?)"/)?.[1] || "";
+      const group = line.match(/group-title="(.*?)"/)?.[1] || "Other";
+      current = { name, logo, group };
+    } else if (line.startsWith("http")) {
+      current.url = line.trim();
+      list.push(current);
+      current = {};
     }
   }
-  return result;
+  return list;
 }
 
-function renderChannels() {
-  channelGrid.innerHTML = "";
-  const toRender = filteredChannels;
+function loadVideo(channel) {
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(channel.url);
+    hls.attachMedia(videoPlayer);
+  } else if (videoPlayer.canPlayType("application/vnd.apple.mpegurl")) {
+    videoPlayer.src = channel.url;
+  } else {
+    alert("This browser doesn't support HLS.");
+  }
+  videoPlayer.play();
+  channelName.textContent = channel.name;
+  channelIcon.src = channel.logo || "";
+}
 
-  toRender.forEach(channel => {
+function renderChannels(filtered) {
+  channelGrid.innerHTML = "";
+
+  filtered.forEach((channel, index) => {
     const card = document.createElement("div");
     card.className = "channel-card";
-    card.innerHTML = `
-      <img src="${channel.logo}" alt="${channel.name}" />
-      <div>${channel.name}</div>
-      <div class="favorite" onclick="toggleFavorite(event, '${channel.name}')">
-        ${favorites.includes(channel.name) ? '★' : '☆'}
-      </div>
-    `;
-    card.onclick = () => playChannel(channel);
+
+    const img = document.createElement("img");
+    img.src = channel.logo || "";
+    card.appendChild(img);
+
+    const title = document.createElement("p");
+    title.textContent = channel.name;
+    card.appendChild(title);
+
+    const fav = document.createElement("span");
+    fav.innerHTML = favorites.includes(channel.url) ? "★" : "☆";
+    fav.className = "favorite";
+    fav.onclick = (e) => {
+      e.stopPropagation();
+      toggleFavorite(channel.url);
+      renderChannels(getFilteredChannels());
+    };
+    card.appendChild(fav);
+
+    card.onclick = () => {
+      currentChannelIndex = index;
+      loadVideo(channel);
+    };
+
     channelGrid.appendChild(card);
   });
 }
 
 function renderCarousel() {
-  carousel.innerHTML = "";
-  filteredChannels.forEach((channel, idx) => {
-    const item = document.createElement("div");
-    item.className = "carousel-item";
-    item.innerHTML = `
-      <img src="${channel.logo}" alt="${channel.name}" />
-      <div>${channel.name}</div>
-    `;
-    item.onclick = () => playChannel(channel);
-    carousel.appendChild(item);
-  });
+  carousel.innerHTML = `
+    <button id="prev-btn">⟨</button>
+    <button id="next-btn">⟩</button>
+  `;
+
+  document.getElementById("prev-btn").onclick = () => {
+    currentChannelIndex = (currentChannelIndex - 1 + channels.length) % channels.length;
+    loadVideo(channels[currentChannelIndex]);
+  };
+
+  document.getElementById("next-btn").onclick = () => {
+    currentChannelIndex = (currentChannelIndex + 1) % channels.length;
+    loadVideo(channels[currentChannelIndex]);
+  };
 }
 
-function playChannel(channel) {
-  if (Hls.isSupported()) {
-    const hls = new Hls();
-    hls.loadSource(channel.url);
-    hls.attachMedia(video);
-  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-    video.src = channel.url;
-  }
-
-  nowPlayingName.textContent = channel.name;
-  nowPlayingIcon.src = channel.logo || "";
-}
-
-function filterChannels() {
-  const keyword = searchInput.value.toLowerCase();
+function getFilteredChannels() {
+  const search = searchBar.value.toLowerCase();
   const category = categoryFilter.value;
-
-  filteredChannels = channels.filter(ch => {
-    const matchesKeyword = ch.name.toLowerCase().includes(keyword);
-    const matchesCategory = category === "All" ||
-      (category === "Favorites" && favorites.includes(ch.name)) ||
-      ch.group === category;
-    return matchesKeyword && matchesCategory;
+  return channels.filter((c) => {
+    const inCategory = category === "All" || c.group === category || (category === "Favorites" && favorites.includes(c.url));
+    const matchesSearch = c.name.toLowerCase().includes(search);
+    return inCategory && matchesSearch;
   });
-
-  renderChannels();
-  renderCarousel();
 }
 
-function toggleFavorite(event, name) {
-  event.stopPropagation();
-  if (favorites.includes(name)) {
-    favorites = favorites.filter(fav => fav !== name);
+function populateCategories() {
+  const unique = [...new Set(channels.map(c => c.group))];
+  categoryFilter.innerHTML = "<option>All</option><option>Favorites</option>" +
+    unique.map(c => `<option>${c}</option>`).join("");
+}
+
+function toggleFavorite(url) {
+  if (favorites.includes(url)) {
+    favorites = favorites.filter(f => f !== url);
   } else {
-    favorites.push(name);
+    favorites.push(url);
   }
   localStorage.setItem("favorites", JSON.stringify(favorites));
-  renderChannels();
 }
 
-firebase.auth().onAuthStateChanged(user => {
-  if (!user) {
-    window.location.href = "index.html";
-  } else {
-    loadM3U(M3U_URL);
-  }
-});
+searchBar.addEventListener("input", () => renderChannels(getFilteredChannels()));
+categoryFilter.addEventListener("change", () => renderChannels(getFilteredChannels()));
+
+fetch(m3uUrl)
+  .then(res => res.text())
+  .then(data => {
+    channels = parseM3U(data);
+    populateCategories();
+    renderCarousel();
+    renderChannels(getFilteredChannels());
+
+    if (channels.length > 0) {
+      currentChannelIndex = 0;
+      loadVideo(channels[0]);
+    }
+  });
