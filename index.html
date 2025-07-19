@@ -3,34 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IPTV Login</title>
+  <title>IPTV Web</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-  <script src="firebase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script defer src="firebase.js"></script>
+  <script defer src="iptv.js"></script>
 </head>
 <body>
-  <div class="login-container">
-    <h1>IPTV Premium Login</h1>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="login()">Login</button>
-    <div id="error-msg"></div>
+
+  <!-- LOGIN UI -->
+  <div id="login-section">
+    <div class="login-container">
+      <img src="logo.png" class="login-logo" />
+      <h2>Login to IPTV</h2>
+      <input type="email" id="email" placeholder="Email" />
+      <div class="password-wrapper">
+        <input type="password" id="password" placeholder="Password" />
+        <span id="toggle-password">👁️</span>
+      </div>
+      <button id="login-btn">Login</button>
+      <p id="login-message"></p>
+    </div>
   </div>
+
+  <!-- IPTV UI -->
+  <div id="iptv-ui" style="display: none;">
+    <header>
+      <img src="logo.png" class="logo" />
+      <div id="clock"></div>
+      <button id="logout-btn">Logout</button>
+    </header>
+
+    <div id="video-player-container">
+      <video id="video-player" controls autoplay></video>
+    </div>
+
+    <div id="now-playing">
+      <img src="https://img.icons8.com/ios-filled/50/ffffff/television.png" />
+      <span id="now-playing-title">Now Playing</span>
+    </div>
+
+    <div id="search-container">
+      <input type="text" id="search-bar" placeholder="Search channel...">
+      <select id="category-filter">
+        <option value="All">All Categories</option>
+      </select>
+    </div>
+
+    <div id="channel-grid"></div>
+  </div>
+
   <script>
-    function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+    // Show/hide password
+    document.getElementById('toggle-password').onclick = () => {
+      const password = document.getElementById('password');
+      password.type = password.type === 'password' ? 'text' : 'password';
+    };
+
+    // Check auth state
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById("login-section").style.display = "none";
+        document.getElementById("iptv-ui").style.display = "block";
+      } else {
+        document.getElementById("login-section").style.display = "flex";
+        document.getElementById("iptv-ui").style.display = "none";
+      }
+    });
+
+    // Login button
+    document.getElementById("login-btn").onclick = () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
       firebase.auth().signInWithEmailAndPassword(email, password)
         .then(() => {
-          window.location.href = "iptv.html";
+          document.getElementById("login-message").textContent = "Login successful!";
         })
         .catch((error) => {
-          document.getElementById("error-msg").innerText = error.message;
+          document.getElementById("login-message").textContent = error.message;
         });
-    }
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) window.location.href = "iptv.html";
+    };
+
+    // Logout button
+    document.getElementById("logout-btn")?.addEventListener("click", () => {
+      firebase.auth().signOut().then(() => {
+        localStorage.removeItem("device_id");
+        window.location.reload();
+      });
     });
   </script>
 </body>
