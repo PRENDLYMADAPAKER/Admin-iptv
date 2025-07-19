@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPTV Web App</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -22,13 +22,14 @@
       <input type="text" id="search-bar" placeholder="Search channels..." />
       <select id="category-filter">
         <option>All</option>
+        <option>Favorites</option>
       </select>
     </div>
 
     <div id="channel-grid" class="channel-grid"></div>
   </main>
 
-  <!-- ✅ Load Firebase for logout functionality -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
   <script>
@@ -44,10 +45,10 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 
-  <!-- ✅ HLS.js must come BEFORE iptv.js -->
+  <!-- HLS.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- ✅ Your IPTV functionality -->
+  <!-- IPTV Logic -->
   <script src="iptv.js"></script>
 </body>
 </html>
