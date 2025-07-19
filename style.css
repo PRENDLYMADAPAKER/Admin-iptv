@@ -1,6 +1,6 @@
 body {
   margin: 0;
-  font-family: sans-serif;
+  font-family: Arial, sans-serif;
   background-color: #000;
   color: #fff;
 }
@@ -9,25 +9,24 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #111;
-  padding: 10px 20px;
+  padding: 10px 16px;
+  background-color: #111;
 }
 
 .logo-container {
-  display: flex;
-  align-items: center;
+  flex: 1;
 }
+
 .app-logo {
   height: 40px;
-  width: auto;
 }
 
 #logout-btn {
-  padding: 8px 16px;
-  background: #e63946;
+  background-color: #ff4d4d;
+  color: #fff;
   border: none;
-  color: white;
-  border-radius: 8px;
+  padding: 8px 14px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
@@ -35,84 +34,89 @@ main {
   padding: 10px;
 }
 
-video {
-  width: 100%;
-  max-height: 50vh;
-  background: black;
-  border-radius: 12px;
-}
-
 .now-playing {
   display: flex;
   align-items: center;
-  margin: 10px 0;
+  margin-bottom: 10px;
 }
+
 #channel-icon {
-  height: 40px;
+  height: 30px;
   margin-right: 10px;
 }
+
 #channel-name {
+  font-size: 1.1rem;
   font-weight: bold;
-  font-size: 1.2em;
+}
+
+#video-player {
+  width: 100%;
+  max-height: 260px;
+  background-color: #000;
+  border-radius: 12px;
+  margin-bottom: 12px;
 }
 
 .controls {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
-  margin: 10px 0;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
-input, select {
-  padding: 10px;
+
+#search-bar, #category-filter {
+  flex: 1;
+  padding: 8px;
   border-radius: 6px;
   border: none;
-  flex: 1;
 }
 
 .channel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 10px;
 }
 
 .channel-card {
-  background: #222;
+  background-color: #1e1e1e;
   border-radius: 10px;
   padding: 10px;
   text-align: center;
   cursor: pointer;
 }
+
 .channel-card img {
-  max-width: 100%;
-  height: 60px;
+  height: 50px;
   object-fit: contain;
-}
-.favorite {
-  display: block;
-  margin-top: 5px;
-  font-size: 18px;
-  color: gold;
-  cursor: pointer;
+  margin-bottom: 5px;
 }
 
-/* Carousel styles */
+.channel-card span {
+  display: block;
+  font-size: 14px;
+  margin-top: 5px;
+  color: #ddd;
+}
+
+.favorite {
+  color: gold;
+}
+
 .carousel-container {
   display: flex;
   overflow-x: auto;
-  padding: 10px 0;
   gap: 10px;
+  margin: 12px 0;
+  padding-bottom: 5px;
 }
-.carousel-item {
-  min-width: 100px;
-  background: #333;
-  border-radius: 10px;
-  text-align: center;
-  flex-shrink: 0;
-  padding: 5px;
-  cursor: pointer;
+
+.carousel-container::-webkit-scrollbar {
+  display: none;
 }
-.carousel-item img {
-  width: 60px;
-  height: 40px;
-  object-fit: contain;
+
+@media screen and (max-width: 600px) {
+  .channel-card img {
+    height: 40px;
+  }
 }
