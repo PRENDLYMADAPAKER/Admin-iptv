@@ -1,124 +1,109 @@
-<!-- Full updated IPTV HTML with working categories -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IPTV Premium</title>
+  <title>IPTV Premium - Login Protected</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <style>
     body {
       margin: 0;
-      background: #111;
-      color: #fff;
       font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
     }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem;
-      background: #222;
-    }
-    video {
-      width: 100%;
-      max-height: 300px;
-      background: #000;
-    }
-    .now-playing-banner {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      background: #1e1e1e;
-      padding: 1rem;
-      border-bottom: 1px solid #333;
-    }
-    .now-playing-banner img {
-      width: 50px;
-      height: 50px;
-      object-fit: contain;
-      border-radius: 6px;
-      background: #000;
-    }
-    .now-playing-banner span {
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
-    #epgSection {
-      padding: 1rem;
-      border-top: 1px solid #333;
-    }
-    .controls {
-      padding: 1rem;
-      background: #1c1c1c;
+    .hidden { display: none; }
+    .centered {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
-    .controls input, .controls select {
+    input, button {
+      margin: 0.5rem;
       padding: 0.5rem;
       font-size: 1rem;
-      width: 100%;
-      border: none;
       border-radius: 5px;
     }
-    .grid {
-      display: flex;
-      overflow-x: auto;
-      gap: 1rem;
-      padding: 1rem;
-    }
-    .channel {
-      min-width: 45%;
-      background: #222;
-      padding: 0.5rem;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    .channel img {
-      width: 100%;
-      height: 100px;
-      object-fit: cover;
-      border-radius: 10px;
-    }
-    .channel p {
-      margin: 0.5rem 0 0;
-      font-size: 0.9rem;
-      text-align: center;
-    }
+    button { cursor: pointer; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>IPTV Premium</h1>
-    <span id="clock"></span>
-  </header>
-
-  <video id="player" controls autoplay muted></video>
-
-  <div id="nowPlaying" class="now-playing-banner" style="display:none;">
-    <img id="nowLogo" src="" alt="Logo" />
-    <span id="nowName"></span>
+  <!-- Login Form -->
+  <div id="loginScreen" class="centered">
+    <h2>Login to IPTV</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="loginError" style="color: red;"></p>
   </div>
 
-  <div class="controls">
-    <input type="text" id="searchInput" placeholder="Search channels..." oninput="filterChannels()" />
-    <select id="categorySelect" onchange="filterChannels()">
-      <option value="">All Categories</option>
-    </select>
-  </div>
+  <!-- IPTV Content -->
+  <div id="iptvApp" class="hidden">
+    <header style="background:#222;padding:1rem;text-align:center;">
+      <h1>IPTV Premium</h1>
+      <button onclick="logout()" style="position:absolute;top:1rem;right:1rem;">Logout</button>
+    </header>
 
-  <div id="epgSection">
-    <h3>Program Guide</h3>
-    <div id="epgNow">Now: <span style="opacity: 0.7;">Loading...</span></div>
-    <div id="epgNext">Next: <span style="opacity: 0.7;">Loading...</span></div>
-  </div>
+    <video id="player" controls autoplay muted style="width:100%;max-height:300px;background:#000;"></video>
 
-  <div id="channelGrid" class="grid"></div>
+    <div class="controls" style="padding:1rem;background:#1c1c1c;">
+      <input type="text" id="searchInput" placeholder="Search channels..." oninput="filterChannels()" style="width:100%;margin-bottom:10px;">
+      <select id="categorySelect" onchange="filterChannels()" style="width:100%;">
+        <option value="">All Categories</option>
+      </select>
+    </div>
+
+    <div id="channelGrid" class="grid" style="display:flex;overflow-x:auto;gap:1rem;padding:1rem;"></div>
+  </div>
 
   <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+      authDomain: "iptv-log-in.firebaseapp.com",
+      projectId: "iptv-log-in",
+      storageBucket: "iptv-log-in.firebasestorage.app",
+      messagingSenderId: "820026131349",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c",
+      measurementId: "G-4Y8T6J595Z"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('iptvApp').classList.remove('hidden');
+        initIPTV();
+      } else {
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('iptvApp').classList.add('hidden');
+      }
+    });
+
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+          document.getElementById('loginError').textContent = '';
+        })
+        .catch(err => {
+          document.getElementById('loginError').textContent = err.message;
+        });
+    }
+
+    function logout() {
+      auth.signOut();
+    }
+
+    // IPTV Logic
     const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
-    const epgUrl = "https://tinyurl.com/DrewLive002-epg";
-    let channels = [], epgData = [];
+    let channels = [];
 
     function parseM3U(text) {
       const result = [];
@@ -132,7 +117,6 @@
           const url = lines[i + 1]?.trim();
           if (url && url.startsWith('http')) {
             result.push({ name, logo, url, group });
-            console.log(`Parsed → Name: ${name}, Group: ${group}`);
           }
         }
       }
@@ -141,7 +125,7 @@
 
     function updateCategoryList() {
       const categories = new Set();
-      channels.forEach(ch => categories.add(ch.group || "Uncategorized"));
+      channels.forEach(ch => categories.add(ch.group));
       const select = document.getElementById("categorySelect");
       select.innerHTML = '<option value="">All Categories</option>';
       [...categories].sort().forEach(cat => {
@@ -150,31 +134,19 @@
         option.textContent = cat;
         select.appendChild(option);
       });
-      console.log("Categories loaded:", [...categories]);
     }
 
-    function renderChannels(filteredChannels) {
+    function renderChannels(filtered) {
       const grid = document.getElementById("channelGrid");
       grid.innerHTML = "";
-      filteredChannels.forEach(ch => {
+      filtered.forEach(ch => {
         const div = document.createElement("div");
         div.className = "channel";
-        div.innerHTML = `<img src="${ch.logo || 'https://via.placeholder.com/300x100'}" /><p>${ch.name}</p>`;
+        div.style = "min-width:45%;background:#222;padding:0.5rem;border-radius:10px;cursor:pointer;";
+        div.innerHTML = `<img src="${ch.logo}" style="width:100%;height:100px;object-fit:cover;border-radius:10px;"><p style="text-align:center;">${ch.name}</p>`;
         div.onclick = () => playChannelByUrl(ch.url);
         grid.appendChild(div);
       });
-    }
-
-    function playChannelByUrl(url) {
-      const player = document.getElementById("player");
-      const ch = channels.find(c => c.url === url);
-      if (ch) {
-        player.src = ch.url;
-        document.getElementById("nowPlaying").style.display = "flex";
-        document.getElementById("nowLogo").src = ch.logo || "https://via.placeholder.com/50x50";
-        document.getElementById("nowName").textContent = ch.name;
-        updateEPG(ch);
-      }
     }
 
     function filterChannels() {
@@ -187,64 +159,20 @@
       renderChannels(filtered);
     }
 
-    function updateClock() {
-      document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+    function playChannelByUrl(url) {
+      const player = document.getElementById("player");
+      player.src = url;
     }
 
-    function fetchEPG() {
-      fetch(epgUrl)
+    function initIPTV() {
+      fetch(m3uUrl)
         .then(res => res.text())
-        .then(xml => {
-          const doc = new DOMParser().parseFromString(xml, "text/xml");
-          epgData = [...doc.querySelectorAll("programme")].map(p => ({
-            start: p.getAttribute("start"),
-            stop: p.getAttribute("stop"),
-            channel: p.getAttribute("channel"),
-            title: p.querySelector("title")?.textContent || "",
-            desc: p.querySelector("desc")?.textContent || ""
-          }));
+        .then(text => {
+          channels = parseM3U(text);
+          updateCategoryList();
+          renderChannels(channels);
         });
     }
-
-    function updateEPG(channel) {
-      const now = new Date();
-      const matches = epgData.filter(p => p.channel.toLowerCase().includes(channel.name.toLowerCase()));
-
-      const nowProgram = matches.find(p => {
-        const start = new Date(p.start.slice(0, 14).replace(/(.{4})(.{2})(.{2})(.{2})(.{2})/, "$1-$2-$3T$4:$5"));
-        const stop = new Date(p.stop.slice(0, 14).replace(/(.{4})(.{2})(.{2})(.{2})(.{2})/, "$1-$2-$3T$4:$5"));
-        return now >= start && now < stop;
-      });
-
-      const nextProgram = matches.find(p => {
-        const start = new Date(p.start.slice(0, 14).replace(/(.{4})(.{2})(.{2})(.{2})(.{2})/, "$1-$2-$3T$4:$5"));
-        return start > now;
-      });
-
-      document.getElementById("epgNow").innerText = nowProgram ?
-        `Now: ${nowProgram.title} (${formatTime(nowProgram.start)} - ${formatTime(nowProgram.stop)})` :
-        "Now: No EPG info";
-
-      document.getElementById("epgNext").innerText = nextProgram ?
-        `Next: ${nextProgram.title} at ${formatTime(nextProgram.start)}` :
-        "Next: N/A";
-    }
-
-    function formatTime(xmltvTime) {
-      const t = new Date(xmltvTime.slice(0, 14).replace(/(.{4})(.{2})(.{2})(.{2})(.{2})/, "$1-$2-$3T$4:$5"));
-      return t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    setInterval(updateClock, 1000);
-    updateClock();
-    fetchEPG();
-    fetch(m3uUrl)
-      .then(res => res.text())
-      .then(text => {
-        channels = parseM3U(text);
-        updateCategoryList();
-        renderChannels(channels);
-      });
   </script>
 </body>
 </html>
