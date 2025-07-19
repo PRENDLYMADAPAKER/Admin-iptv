@@ -1,3 +1,5 @@
+// iptv.js
+
 const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
 let channels = [];
 let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
@@ -10,15 +12,11 @@ const channelName = document.getElementById("channel-name");
 const channelIcon = document.getElementById("channel-icon");
 const logoutBtn = document.getElementById("logout-btn");
 
-// Logout and clean HLS
 logoutBtn.onclick = () => {
-  if (window.hls) {
-    window.hls.destroy();
-  }
   firebase.auth().signOut().then(() => window.location.href = "login.html");
 };
 
-// Parse M3U playlist
+// 🔁 Parse .m3u playlist
 function parseM3U(data) {
   const lines = data.split("\n");
   let current = {};
@@ -39,26 +37,27 @@ function parseM3U(data) {
   return list;
 }
 
-// Load selected video with HLS.js
+// ✅ Use HLS.js for video loading
 function loadVideo(channel) {
+  if (window.hls) {
+    window.hls.destroy(); // clean up previous instance
+  }
+
   if (Hls.isSupported()) {
-    if (window.hls) {
-      window.hls.destroy();
-    }
     window.hls = new Hls();
     window.hls.loadSource(channel.url);
     window.hls.attachMedia(videoPlayer);
   } else if (videoPlayer.canPlayType("application/vnd.apple.mpegurl")) {
     videoPlayer.src = channel.url;
   } else {
-    alert("This browser does not support HLS streaming.");
+    alert("This browser does not support HLS playback.");
   }
 
   channelName.textContent = channel.name;
   channelIcon.src = channel.logo || "";
 }
 
-// Render channels to grid
+// Render all channels
 function renderChannels(filtered) {
   channelGrid.innerHTML = "";
   filtered.forEach((channel) => {
@@ -88,51 +87,39 @@ function renderChannels(filtered) {
   });
 }
 
-// Filter logic
 function getFilteredChannels() {
   const search = searchBar.value.toLowerCase();
   const category = categoryFilter.value;
 
   return channels.filter((c) => {
-    const matchesCategory =
-      category === "All" ||
-      c.group === category ||
-      (category === "Favorites" && favorites.includes(c.url));
+    const matchesCategory = category === "All" || c.group === category || (category === "Favorites" && favorites.includes(c.url));
     const matchesSearch = c.name.toLowerCase().includes(search);
     return matchesCategory && matchesSearch;
   });
 }
 
-// Populate category dropdown
 function populateCategories() {
-  const categories = [...new Set(channels.map((c) => c.group))];
-  categoryFilter.innerHTML =
-    "<option>All</option><option>Favorites</option>" +
-    categories.map((c) => `<option>${c}</option>`).join("");
+  const categories = [...new Set(channels.map(c => c.group))];
+  categoryFilter.innerHTML = "<option>All</option><option>Favorites</option>" +
+    categories.map(c => `<option>${c}</option>`).join("");
 }
 
-// Favorite toggle
 function toggleFavorite(url) {
   if (favorites.includes(url)) {
-    favorites = favorites.filter((f) => f !== url);
+    favorites = favorites.filter(f => f !== url);
   } else {
     favorites.push(url);
   }
   localStorage.setItem("favorites", JSON.stringify(favorites));
 }
 
-// Search and filter listeners
-searchBar.addEventListener("input", () =>
-  renderChannels(getFilteredChannels())
-);
-categoryFilter.addEventListener("change", () =>
-  renderChannels(getFilteredChannels())
-);
+searchBar.addEventListener("input", () => renderChannels(getFilteredChannels()));
+categoryFilter.addEventListener("change", () => renderChannels(getFilteredChannels()));
 
-// Fetch and load channels
+// 🔁 Fetch and initialize
 fetch(m3uUrl)
-  .then((res) => res.text())
-  .then((data) => {
+  .then(res => res.text())
+  .then(data => {
     channels = parseM3U(data);
     populateCategories();
     renderChannels(channels);
