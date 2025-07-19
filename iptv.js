@@ -110,20 +110,3 @@ function populateCategories() {
 function toggleFavorite(url) {
   if (favorites.includes(url)) {
     favorites = favorites.filter(f => f !== url);
-  } else {
-    favorites.push(url);
-  }
-  localStorage.setItem("favorites", JSON.stringify(favorites));
-}
-
-searchBar.addEventListener("input", () => renderChannels(getFilteredChannels()));
-categoryFilter.addEventListener("change", () => renderChannels(getFilteredChannels()));
-
-fetch(m3uUrl)
-  .then(res => res.text())
-  .then(data => {
-    channels = parseM3U(data);
-    populateCategories();
-    renderChannels(channels);
-    if (channels.length > 0) loadVideo(channels[0]);
-  });
