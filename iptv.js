@@ -1,85 +1,93 @@
-// IPTV.js
+// iptv.js
 
-const video = document.getElementById('video-player');
-const searchInput = document.getElementById('search-bar');
-const categoryFilter = document.getElementById('category-filter');
-const channelGrid = document.getElementById('channel-grid');
-const logoutBtn = document.getElementById('logout-btn');
-const channelIcon = document.getElementById('channel-icon');
-const channelName = document.getElementById('channel-name');
+let channels = [];
+let filteredChannels = [];
+let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
 
-const m3uUrl = 'https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u';
-const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+const video = document.getElementById("video-player");
+const searchInput = document.getElementById("search-bar");
+const categoryFilter = document.getElementById("category-filter");
+const channelGrid = document.getElementById("channel-grid");
+const nowPlayingName = document.getElementById("channel-name");
+const nowPlayingIcon = document.getElementById("channel-icon");
+const logoutBtn = document.getElementById("logout-btn");
+const carousel = document.getElementById("channel-carousel");
 
-let allChannels = [];
-let currentCategory = 'All';
+const M3U_URL = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
 
-// Logout button
-logoutBtn.addEventListener('click', () => {
+logoutBtn.addEventListener("click", () => {
   firebase.auth().signOut().then(() => {
-    window.location.href = 'index.html';
+    window.location.href = "index.html";
   });
 });
 
-// Parse M3U Playlist
-async function loadChannels() {
-  const res = await fetch(m3uUrl);
-  const text = await res.text();
-  const lines = text.split('\n');
-  let channels = [];
+searchInput.addEventListener("input", () => filterChannels());
+categoryFilter.addEventListener("change", () => filterChannels());
+
+function loadM3U(url) {
+  fetch(url)
+    .then(res => res.text())
+    .then(data => {
+      channels = parseM3U(data);
+      filteredChannels = [...channels];
+      renderChannels();
+      renderCarousel();
+      playChannel(filteredChannels[0]);
+    });
+}
+
+function parseM3U(data) {
+  const lines = data.split("\n");
+  const result = [];
 
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('#EXTINF')) {
-      const nameMatch = lines[i].match(/tvg-name="(.*?)"/);
-      const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
-      const groupMatch = lines[i].match(/group-title="(.*?)"/);
+    if (lines[i].startsWith("#EXTINF")) {
+      const name = lines[i].split(",").pop().trim();
+      const logo = lines[i].match(/tvg-logo="(.*?)"/);
+      const group = lines[i].match(/group-title="(.*?)"/);
+      const url = lines[i + 1];
 
-      channels.push({
-        name: nameMatch ? nameMatch[1] : 'Unknown',
-        logo: logoMatch ? logoMatch[1] : '',
-        group: groupMatch ? groupMatch[1] : 'Others',
-        url: lines[i + 1],
+      result.push({
+        name,
+        url,
+        logo: logo ? logo[1] : "",
+        group: group ? group[1] : "Uncategorized",
       });
     }
   }
-
-  allChannels = channels;
-  populateCategoryFilter();
-  displayChannels();
-  if (channels.length > 0) playChannel(channels[0]);
+  return result;
 }
 
-// Display channels based on filter
-function displayChannels() {
-  const keyword = searchInput.value.toLowerCase();
-  channelGrid.innerHTML = '';
+function renderChannels() {
+  channelGrid.innerHTML = "";
+  const toRender = filteredChannels;
 
-  let filtered = allChannels.filter(ch =>
-    (currentCategory === 'All' || ch.group === currentCategory || (currentCategory === 'Favorites' && favorites.includes(ch.url))) &&
-    ch.name.toLowerCase().includes(keyword)
-  );
-
-  filtered.forEach(ch => {
-    const card = document.createElement('div');
-    card.className = 'channel-card';
-
+  toRender.forEach(channel => {
+    const card = document.createElement("div");
+    card.className = "channel-card";
     card.innerHTML = `
-      <img src="${ch.logo}" alt="${ch.name}" />
-      <div class="channel-name">${ch.name}</div>
-      <div class="favorite-star">${favorites.includes(ch.url) ? '★' : '☆'}</div>
+      <img src="${channel.logo}" alt="${channel.name}" />
+      <div>${channel.name}</div>
+      <div class="favorite" onclick="toggleFavorite(event, '${channel.name}')">
+        ${favorites.includes(channel.name) ? '★' : '☆'}
+      </div>
     `;
-
-    card.onclick = () => {
-      playChannel(ch);
-    };
-
-    card.querySelector('.favorite-star').onclick = e => {
-      e.stopPropagation();
-      toggleFavorite(ch.url);
-      displayChannels();
-    };
-
+    card.onclick = () => playChannel(channel);
     channelGrid.appendChild(card);
+  });
+}
+
+function renderCarousel() {
+  carousel.innerHTML = "";
+  filteredChannels.forEach((channel, idx) => {
+    const item = document.createElement("div");
+    item.className = "carousel-item";
+    item.innerHTML = `
+      <img src="${channel.logo}" alt="${channel.name}" />
+      <div>${channel.name}</div>
+    `;
+    item.onclick = () => playChannel(channel);
+    carousel.appendChild(item);
   });
 }
 
@@ -88,41 +96,45 @@ function playChannel(channel) {
     const hls = new Hls();
     hls.loadSource(channel.url);
     hls.attachMedia(video);
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
     video.src = channel.url;
-  } else {
-    alert('Your browser does not support HLS');
   }
 
-  channelIcon.src = channel.logo;
-  channelName.textContent = channel.name;
+  nowPlayingName.textContent = channel.name;
+  nowPlayingIcon.src = channel.logo || "";
 }
 
-function toggleFavorite(url) {
-  if (favorites.includes(url)) {
-    favorites.splice(favorites.indexOf(url), 1);
-  } else {
-    favorites.push(url);
-  }
-  localStorage.setItem('favorites', JSON.stringify(favorites));
-}
+function filterChannels() {
+  const keyword = searchInput.value.toLowerCase();
+  const category = categoryFilter.value;
 
-function populateCategoryFilter() {
-  const categories = [...new Set(allChannels.map(ch => ch.group))];
-  categoryFilter.innerHTML = '<option value="All">All</option><option value="Favorites">Favorites</option>';
-
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat;
-    opt.textContent = cat;
-    categoryFilter.appendChild(opt);
+  filteredChannels = channels.filter(ch => {
+    const matchesKeyword = ch.name.toLowerCase().includes(keyword);
+    const matchesCategory = category === "All" ||
+      (category === "Favorites" && favorites.includes(ch.name)) ||
+      ch.group === category;
+    return matchesKeyword && matchesCategory;
   });
+
+  renderChannels();
+  renderCarousel();
 }
 
-searchInput.addEventListener('input', displayChannels);
-categoryFilter.addEventListener('change', e => {
-  currentCategory = e.target.value;
-  displayChannels();
-});
+function toggleFavorite(event, name) {
+  event.stopPropagation();
+  if (favorites.includes(name)) {
+    favorites = favorites.filter(fav => fav !== name);
+  } else {
+    favorites.push(name);
+  }
+  localStorage.setItem("favorites", JSON.stringify(favorites));
+  renderChannels();
+}
 
-loadChannels();
+firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = "index.html";
+  } else {
+    loadM3U(M3U_URL);
+  }
+});
