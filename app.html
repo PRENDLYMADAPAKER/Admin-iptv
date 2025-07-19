@@ -1,213 +1,159 @@
-<!-- app.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPTV Premium</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" />
   <style>
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #121212;
+      font-family: 'Inter', sans-serif;
+      background: #111;
       color: white;
     }
     header {
-      background: #1f1f1f;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      padding: 10px 20px;
-    }
-    #logo {
-      font-size: 1.4em;
-      color: #ff5722;
-      font-weight: bold;
-    }
-    #clock {
-      font-size: 1em;
+      padding: 10px 16px;
+      background: #000;
+      font-size: 18px;
     }
     #video-player {
       width: 100%;
-      height: 220px;
+      height: 200px;
       background: black;
     }
-    #now-section {
+    #now-playing {
       display: flex;
       align-items: center;
+      padding: 8px 16px;
       background: #222;
-      padding: 10px;
     }
     #channel-icon {
-      width: 40px;
-      height: 40px;
-      margin-right: 10px;
-      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      margin-right: 8px;
+      border-radius: 4px;
+      background: #333;
     }
-    #now-playing {
-      font-size: 1.2em;
-    }
-    #epg-now {
-      font-size: 0.9em;
-      color: #aaa;
-    }
-    #controls {
+    .controls {
       display: flex;
-      gap: 10px;
-      padding: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #181818;
     }
-    input, select {
-      padding: 8px;
-      font-size: 1em;
-      border-radius: 6px;
+    .controls input, .controls select, .controls button {
+      padding: 6px 8px;
+      border-radius: 4px;
       border: none;
-      width: 100%;
-      max-width: 180px;
+      font-size: 14px;
     }
     #channel-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      padding: 10px;
+      gap: 12px;
+      padding: 12px 16px;
     }
     .channel-card {
-      background: #1e1e1e;
-      border-radius: 10px;
-      padding: 10px;
+      background: #222;
+      padding: 8px;
+      border-radius: 8px;
       text-align: center;
-      box-shadow: 0 0 4px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
     .channel-card img {
       width: 100%;
       height: 100px;
       object-fit: contain;
-      border-radius: 6px;
+      border-radius: 4px;
       background: #000;
     }
     .channel-card span {
       display: block;
-      margin: 5px 0;
-      font-size: 0.95em;
+      margin-top: 6px;
+      font-size: 14px;
     }
     .channel-card button {
-      background: none;
+      margin-top: 4px;
+      font-size: 16px;
+      background: transparent;
+      color: #f90;
       border: none;
-      color: #ff0;
-      font-size: 1.4em;
     }
-    #settings-btn {
+    #refresh-btn {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #ff5722;
-      border: none;
-      padding: 12px 16px;
+      bottom: 16px;
+      right: 16px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      font-size: 20px;
-      color: white;
-      cursor: pointer;
+      font-size: 22px;
+      background: orange;
+      color: black;
+      border: none;
     }
   </style>
 </head>
 <body>
-
   <header>
-    <div id="logo">IPTV Premium</div>
+    <div><b>IPTV Premium</b></div>
     <div id="clock">--:--</div>
   </header>
 
-  <video id="video-player" controls autoplay></video>
+  <video id="video-player" controls></video>
 
-  <div id="now-section">
+  <div id="now-playing">
     <img id="channel-icon" src="" alt="Logo">
     <div>
-      <div id="now-playing">Now Playing</div>
-      <div id="epg-now">Loading EPG...</div>
+      <div id="channel-name">Now Playing</div>
+      <div id="epg-now" style="font-size: 12px; color: #aaa;">Loading EPG...</div>
     </div>
   </div>
 
-  <div id="controls">
-    <input type="text" id="search" placeholder="Search channels...">
-    <select id="category-filter">
-      <option value="all">All Categories</option>
-      <option value="favorites">Favorites</option>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search">
+    <select id="category">
+      <option>All Categories</option>
     </select>
-    <input type="text" id="custom-m3u" placeholder="Paste M3U URL" />
+    <input type="text" id="m3u-url" placeholder="Paste M3U URL">
     <button onclick="importM3U()">Import</button>
     <button onclick="logout()">Logout</button>
   </div>
 
   <div id="channel-grid"></div>
 
-  <button id="settings-btn" onclick="refreshAll()">⟳</button>
+  <button id="refresh-btn" onclick="fetchM3U()">⟳</button>
 
+  <!-- Your core IPTV logic -->
   <script src="iptv-core.js"></script>
+
+  <!-- Clock -->
   <script>
-    // Live Clock
     setInterval(() => {
       const now = new Date();
-      document.getElementById("clock").textContent =
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById("clock").textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }, 1000);
-
-    // Search & Category Filter
-    document.getElementById("search").addEventListener("input", renderChannels);
-    document.getElementById("category-filter").addEventListener("change", renderChannels);
-
-    // Swipe Navigation
-    let startX = 0;
-    document.getElementById("channel-grid").addEventListener("touchstart", e => {
-      startX = e.touches[0].clientX;
-    });
-    document.getElementById("channel-grid").addEventListener("touchend", e => {
-      const endX = e.changedTouches[0].clientX;
-      if (endX < startX - 50) {
-        currentIndex = Math.min(currentIndex + 2, channels.length - 2);
-        renderChannels();
-      } else if (endX > startX + 50) {
-        currentIndex = Math.max(currentIndex - 2, 0);
-        renderChannels();
-      }
-    });
-
-    // Custom M3U Import
-    function importM3U() {
-      const url = document.getElementById("custom-m3u").value.trim();
-      if (url) {
-        localStorage.setItem("customM3U", url);
-        location.reload();
-      }
-    }
-
-    // Logout (Firebase)
-    function logout() {
-      if (firebase && firebase.auth) {
-        firebase.auth().signOut().then(() => {
-          location.href = "index.html";
-        });
-      } else {
-        location.href = "index.html";
-      }
-    }
-
-    // Refresh button
-    function refreshAll() {
-      location.reload();
-    }
   </script>
 
-  <!-- Firebase (optional if logout used) -->
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
-  <script>
+  <!-- Firebase Logout -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
       authDomain: "iptv-log-in.firebaseapp.com",
-      projectId: "iptv-log-in",
+      projectId: "iptv-web",
       appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
-    firebase.initializeApp(firebaseConfig);
-  </script>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
+    window.logout = function () {
+      signOut(auth).then(() => window.location.href = "index.html");
+    }
+  </script>
 </body>
 </html>
