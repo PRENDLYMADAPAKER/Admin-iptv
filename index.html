@@ -1,206 +1,240 @@
-<!-- index.html - IPTV Premium with Firebase Auth -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IPTV Premium</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #111;
-      color: #fff;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 20px;
-      background-color: #000;
-    }
-    #clock { font-weight: bold; }
-    #video-player {
-      width: 100%;
-      height: 250px;
-      background: #000;
-    }
-    #login-container, #iptv-app { display: none; }
-    .channel-grid {
-      display: flex;
-      overflow-x: hidden;
-      gap: 10px;
-      padding: 10px;
-    }
-    .channel-card {
-      flex: 0 0 48%;
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+    body { background: #111; color: white; overflow-x: hidden; }
+    header { padding: 10px; background: #222; display: flex; justify-content: space-between; align-items: center; }
+    #clock { font-size: 16px; }
+    #videoPlayer { width: 100%; height: 220px; background: black; }
+    #nowPlaying { padding: 10px; background: #1e1e1e; font-size: 14px; }
+    #epgInfo { font-size: 13px; padding: 0 10px 10px; color: #bbb; }
+    #controls { display: flex; gap: 10px; padding: 10px; background: #111; }
+    #searchInput, #categorySelect { flex: 1; padding: 6px; border-radius: 5px; border: none; }
+    #channelGrid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 10px; gap: 10px; }
+    .channelCard {
+      flex: 0 0 calc(50% - 10px);
+      scroll-snap-align: center;
       background: #222;
-      border-radius: 12px;
-      overflow: hidden;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
       position: relative;
     }
-    .channel-card img {
-      width: 100%;
-      height: 100px;
-      object-fit: cover;
-    }
-    .favorite {
+    .favorite-btn {
       position: absolute;
       top: 5px;
       right: 5px;
-      font-size: 20px;
-      color: #fff;
+      background: transparent;
+      border: none;
+      color: gold;
+      font-size: 18px;
     }
-    .fav-toggle.active { color: gold; }
-    #epg-guide { padding: 10px; font-size: 14px; background: #1b1b1b; }
-    .auth-input {
-      padding: 10px; margin: 5px 0; width: 100%; max-width: 300px;
-      border-radius: 5px; border: none;
+    .hidden { display: none; }
+    #authContainer {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      max-width: 300px;
+      margin: 50px auto;
+      background: #222;
+      border-radius: 10px;
     }
-    .auth-button {
-      padding: 10px 20px; background: crimson; color: #fff;
-      border: none; border-radius: 5px; cursor: pointer;
+    #authContainer input, #authContainer button {
+      margin: 8px 0;
+      padding: 8px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
     }
+    #authContainer button { background: orange; color: #000; font-weight: bold; }
   </style>
 </head>
 <body>
-
-  <!-- Login/Register Section -->
-  <div id="login-container" style="text-align:center; padding:20px">
-    <h2>Login to IPTV Premium</h2>
-    <input type="email" id="email" class="auth-input" placeholder="Email" /><br />
-    <input type="password" id="password" class="auth-input" placeholder="Password" /><br />
-    <button onclick="login()" class="auth-button">Login</button>
-    <button onclick="register()" class="auth-button">Register</button>
+  <!-- Firebase Auth UI -->
+  <div id="authContainer">
+    <h2 style="margin-bottom: 10px;">IPTV Premium Login</h2>
+    <input type="email" id="emailInput" placeholder="Email">
+    <input type="password" id="passwordInput" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+    <p id="authMessage"></p>
   </div>
 
-  <!-- Main IPTV App -->
-  <div id="iptv-app">
+  <!-- Main App UI -->
+  <div id="appContainer" class="hidden">
     <header>
-      <img src="logo.png" alt="IPTV Premium" height="30" />
-      <div>
-        <span id="clock"></span>
-        <button onclick="logout()" class="auth-button" style="margin-left:10px">Logout</button>
-      </div>
+      <img src="https://i.imgur.com/BKLNnG0.png" alt="IPTV Premium" style="height:30px;">
+      <div id="clock">--:--</div>
     </header>
 
-    <div id="video-player">
-      <video id="player" controls autoplay muted style="width:100%; height:100%"></video>
+    <video id="videoPlayer" controls autoplay></video>
+    <div id="nowPlaying">Now Playing: <span id="nowTitle"></span></div>
+    <div id="epgInfo">
+      <div><b>Now:</b> <span id="epgNow">-</span></div>
+      <div><b>Next:</b> <span id="epgNext">-</span></div>
+      <div><b>Later:</b> <span id="epgLater">-</span></div>
     </div>
 
-    <div id="now-playing" style="padding:10px; font-weight:bold">Now Playing: <span id="nowChannel"></span></div>
-    <div id="epg-guide">EPG: <span id="epg-now"></span> → <span id="epg-next"></span> → <span id="epg-later"></span></div>
-
-    <div style="padding:10px">
-      <input type="text" id="search" placeholder="Search channel..." style="padding:10px; width:90%" />
+    <div id="controls">
+      <input type="text" id="searchInput" placeholder="Search channels...">
+      <select id="categorySelect"><option value="all">All</option></select>
     </div>
 
-    <div id="channel-grid" class="channel-grid"></div>
+    <div id="channelGrid"></div>
   </div>
 
-  <!-- Firebase CDN -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <script>
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
       authDomain: "iptv-log-in.firebaseapp.com",
       projectId: "iptv-log-in",
       appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
-    const app = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // Auth handlers
     auth.onAuthStateChanged(user => {
       if (user) {
-        document.getElementById('login-container').style.display = 'none';
-        document.getElementById('iptv-app').style.display = 'block';
-        loadIPTV();
+        document.getElementById('authContainer').classList.add('hidden');
+        document.getElementById('appContainer').classList.remove('hidden');
+        initApp();
       } else {
-        document.getElementById('login-container').style.display = 'block';
-        document.getElementById('iptv-app').style.display = 'none';
+        document.getElementById('authContainer').classList.remove('hidden');
+        document.getElementById('appContainer').classList.add('hidden');
       }
     });
+
     function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
+      const email = emailInput.value;
+      const pass = passwordInput.value;
+      auth.signInWithEmailAndPassword(email, pass)
+        .catch(err => authMessage.textContent = err.message);
     }
+
     function register() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      auth.createUserWithEmailAndPassword(email, password).catch(err => alert(err.message));
+      const email = emailInput.value;
+      const pass = passwordInput.value;
+      auth.createUserWithEmailAndPassword(email, pass)
+        .catch(err => authMessage.textContent = err.message);
     }
-    function logout() { auth.signOut(); }
+  </script>
 
-    // Clock
-    setInterval(() => {
-      document.getElementById("clock").textContent = new Date().toLocaleTimeString();
-    }, 1000);
+  <!-- IPTV Logic -->
+  <script>
+    const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
+    const epgUrl = "https://tinyurl.com/DrewLive002-epg";
 
-    // Load IPTV
-    async function loadIPTV() {
-      const res = await fetch('https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u');
-      const text = await res.text();
-      const lines = text.split('\
-');
-      const channels = [];
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('#EXTINF')) {
-          const title = lines[i].split(',')[1];
-          const logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
-          const logo = logoMatch ? logoMatch[1] : '';
-          const url = lines[i + 1];
-          channels.push({ title, logo, url });
+    let channels = [], favorites = [], currentChannelIndex = 0;
+
+    function initApp() {
+      updateClock();
+      setInterval(updateClock, 1000);
+      loadChannels();
+    }
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("clock").textContent =
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadChannels() {
+      try {
+        const res = await fetch(m3uUrl);
+        const text = await res.text();
+        const lines = text.split("\n");
+        channels = [];
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith("#EXTINF")) {
+            const name = lines[i].split(",")[1];
+            const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
+            const group = lines[i].match(/group-title="([^"]+)"/)?.[1] || "Other";
+            const url = lines[i + 1];
+            channels.push({ name, logo, url, group });
+          }
         }
+        renderChannels();
+      } catch (e) {
+        alert("Failed to load channels.");
       }
-      renderChannels(channels);
     }
 
-    // Render
-    function renderChannels(channels) {
-      const grid = document.getElementById('channel-grid');
-      grid.innerHTML = '';
-      channels.forEach((c, i) => {
-        const div = document.createElement('div');
-        div.className = 'channel-card';
-        div.innerHTML = `
-          <img src="${c.logo}" alt="logo" />
-          <div style="padding:5px">${c.title}</div>
-          <i class="fas fa-star favorite fav-toggle" onclick="toggleFavorite(this)"></i>
+    function renderChannels() {
+      const grid = document.getElementById("channelGrid");
+      const keyword = searchInput.value.toLowerCase();
+      const selectedCategory = categorySelect.value;
+
+      grid.innerHTML = "";
+      const filtered = channels.filter(ch =>
+        ch.name.toLowerCase().includes(keyword) &&
+        (selectedCategory === "all" || ch.group === selectedCategory)
+      );
+
+      // Update categories
+      const categories = [...new Set(channels.map(c => c.group))];
+      categorySelect.innerHTML = `<option value="all">All</option>` + categories.map(c =>
+        `<option value="${c}">${c}</option>`).join("");
+
+      filtered.forEach((ch, index) => {
+        const card = document.createElement("div");
+        card.className = "channelCard";
+        card.innerHTML = `
+          <button class="favorite-btn" onclick="toggleFavorite('${ch.name}')">⭐</button>
+          <img src="${ch.logo}" alt="${ch.name}" style="width: 100%; border-radius: 5px;">
+          <div>${ch.name}</div>
         `;
-        div.onclick = () => playChannel(c);
-        grid.appendChild(div);
+        card.onclick = () => playChannel(index, filtered);
+        grid.appendChild(card);
       });
+
+      if (filtered.length > 0) playChannel(0, filtered);
     }
 
-    function playChannel(c) {
-      const player = document.getElementById('player');
-      player.src = c.url;
-      document.getElementById('nowChannel').textContent = c.title;
-      loadEPG(c.title);
+    function playChannel(index, list) {
+      const ch = list[index];
+      document.getElementById("videoPlayer").src = ch.url;
+      document.getElementById("nowTitle").textContent = ch.name;
+      loadEPG(ch.name);
     }
 
-    function toggleFavorite(el) {
-      el.classList.toggle('active');
+    function toggleFavorite(name) {
+      if (favorites.includes(name)) {
+        favorites = favorites.filter(n => n !== name);
+      } else {
+        favorites.push(name);
+      }
+      renderChannels();
     }
 
-    async function loadEPG(title) {
-      const res = await fetch('https://tinyurl.com/DrewLive002-epg');
-      const xml = await res.text();
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xml, 'text/xml');
-      const now = xmlDoc.querySelector(`programme[title*="${title}"]`);
-      if (now) {
-        document.getElementById('epg-now').textContent = now.querySelector('title')?.textContent || '-';
-        document.getElementById('epg-next').textContent = now.nextElementSibling?.querySelector('title')?.textContent || '-';
-        document.getElementById('epg-later').textContent = now.nextElementSibling?.nextElementSibling?.querySelector('title')?.textContent || '-';
+    async function loadEPG(channelName) {
+      try {
+        const res = await fetch(epgUrl);
+        const xml = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, "text/xml");
+        const progs = [...doc.querySelectorAll("programme")].filter(p =>
+          p.getAttribute("channel").toLowerCase().includes(channelName.toLowerCase())
+        );
+        document.getElementById("epgNow").textContent = progs[0]?.querySelector("title")?.textContent || "-";
+        document.getElementById("epgNext").textContent = progs[1]?.querySelector("title")?.textContent || "-";
+        document.getElementById("epgLater").textContent = progs[2]?.querySelector("title")?.textContent || "-";
+      } catch (e) {
+        document.getElementById("epgNow").textContent = "N/A";
+        document.getElementById("epgNext").textContent = "N/A";
+        document.getElementById("epgLater").textContent = "N/A";
       }
     }
+
+    searchInput.oninput = renderChannels;
+    categorySelect.onchange = renderChannels;
   </script>
 </body>
 </html>
