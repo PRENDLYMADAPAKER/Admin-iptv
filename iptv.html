@@ -2,38 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPTV Premium</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IPTV Web App</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="header-left">
-      <img src="logo.png" alt="IPTV Premium Logo" class="app-logo" />
+  <header>
+    <div class="logo-container">
+      <img src="logo.png" alt="IPTV Logo" class="app-logo" />
     </div>
-    <div class="header-right">
-      <button id="logout-btn">Logout</button>
-    </div>
+    <button id="logout-btn">Logout</button>
   </header>
 
   <main>
-    <section class="player-section">
-      <video id="video-player" controls autoplay></video>
-      <div class="now-playing">
-        <img id="channel-icon" src="" alt="Channel Icon" />
-        <span id="channel-name">Loading...</span>
-      </div>
-    </section>
+    <div class="now-playing">
+      <img id="channel-icon" src="" alt="Channel Icon" />
+      <span id="channel-name">Loading...</span>
+    </div>
 
-    <section class="controls">
+    <video id="video-player" controls autoplay></video>
+
+    <!-- Swipeable Carousel for Quick Channel Switching -->
+    <div id="channel-carousel" class="carousel-container"></div>
+
+    <div class="controls">
       <input type="text" id="search-bar" placeholder="Search channels..." />
       <select id="category-filter">
-        <option value="All">All</option>
-        <option value="Favorites">Favorites</option>
+        <option>All</option>
+        <option>Favorites</option>
       </select>
-    </section>
+    </div>
 
-    <section id="channel-grid" class="channel-grid"></section>
+    <div id="channel-grid" class="channel-grid"></div>
   </main>
 
   <!-- Firebase Auth -->
@@ -52,10 +52,10 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 
-  <!-- HLS.js for m3u8 streaming support -->
+  <!-- HLS.js for streaming -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- IPTV functionality -->
+  <!-- IPTV Logic -->
   <script src="iptv.js"></script>
 </body>
 </html>
