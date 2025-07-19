@@ -18,10 +18,13 @@ header {
   z-index: 1001;
 }
 
-/* Logo */
+/* Logo: small and round */
 .logo {
-  width: 120px;
-  height: auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ffffff33;
 }
 
 /* Clock in center */
