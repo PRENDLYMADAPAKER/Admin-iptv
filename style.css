@@ -1,0 +1,31 @@
+body {
+  background-color: #111;
+  color: white;
+  font-family: sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+
+.login-container {
+  margin-top: 100px;
+}
+
+input {
+  margin: 5px;
+  padding: 10px;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+#videoPlayer {
+  width: 80%;
+  max-width: 800px;
+  margin: 20px auto;
+  display: block;
+}
