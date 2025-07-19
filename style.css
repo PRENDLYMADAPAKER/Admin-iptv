@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: sans-serif;
-  background-color: #111;
+  background-color: #000;
   color: #fff;
 }
 
@@ -9,122 +9,110 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 1rem;
-  background-color: #1a1a1a;
+  background: #111;
+  padding: 10px 20px;
 }
 
+.logo-container {
+  display: flex;
+  align-items: center;
+}
 .app-logo {
   height: 40px;
   width: auto;
 }
 
 #logout-btn {
-  background-color: crimson;
-  color: white;
+  padding: 8px 16px;
+  background: #e63946;
   border: none;
-  padding: 0.4rem 1rem;
+  color: white;
   border-radius: 8px;
   cursor: pointer;
 }
 
 main {
-  padding: 1rem;
+  padding: 10px;
 }
 
-#video-player {
+video {
   width: 100%;
-  max-height: 300px;
-  border-radius: 10px;
-  margin-bottom: 1rem;
+  max-height: 50vh;
+  background: black;
+  border-radius: 12px;
 }
 
 .now-playing {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin: 10px 0;
 }
-
 #channel-icon {
-  height: 30px;
-  width: 30px;
-  border-radius: 6px;
+  height: 40px;
+  margin-right: 10px;
+}
+#channel-name {
+  font-weight: bold;
+  font-size: 1.2em;
 }
 
 .controls {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0;
 }
-
-#search-bar, #category-filter {
-  padding: 0.6rem;
+input, select {
+  padding: 10px;
   border-radius: 6px;
   border: none;
-  font-size: 1rem;
+  flex: 1;
 }
 
 .channel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
 }
 
 .channel-card {
-  background-color: #222;
-  padding: 0.8rem;
+  background: #222;
   border-radius: 10px;
+  padding: 10px;
   text-align: center;
   cursor: pointer;
-  transition: transform 0.2s ease;
 }
-
-.channel-card:hover {
-  transform: scale(1.03);
-}
-
 .channel-card img {
-  width: 100%;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
+  max-width: 100%;
+  height: 60px;
+  object-fit: contain;
+}
+.favorite {
+  display: block;
+  margin-top: 5px;
+  font-size: 18px;
+  color: gold;
+  cursor: pointer;
 }
 
-/* Swipe Carousel */
+/* Carousel styles */
 .carousel-container {
   display: flex;
   overflow-x: auto;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
+  padding: 10px 0;
+  gap: 10px;
 }
-
-.carousel-container::-webkit-scrollbar {
-  display: none;
-}
-
 .carousel-item {
   min-width: 100px;
-  background-color: #222;
+  background: #333;
   border-radius: 10px;
   text-align: center;
-  padding: 0.5rem;
-  flex: 0 0 auto;
+  flex-shrink: 0;
+  padding: 5px;
   cursor: pointer;
 }
-
 .carousel-item img {
-  width: 80px;
-  height: 50px;
+  width: 60px;
+  height: 40px;
   object-fit: contain;
-  margin-bottom: 0.4rem;
-}
-
-/* Responsive */
-@media (min-width: 600px) {
-  .controls {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
 }
