@@ -1,30 +1,119 @@
-// iptv-core.js (Fixed + Enhanced for M3U parsing and rendering)
+<!DOCTYPE html>
+<html>
+<head>
+  <title>IPTV Premium</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap">
+  <style>
+    body { margin: 0; background: #111; font-family: 'Roboto', sans-serif; color: white; }
+    header {
+      background: #1c1c1c;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #logo { font-size: 24px; color: #ff5722; font-weight: bold; }
+    #clock { font-size: 14px; }
+    #videoPlayer { width: 100%; height: 220px; background: black; }
+    #nowPlaying {
+      background: #222;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+    }
+    #nowPlaying img {
+      height: 40px;
+      margin-right: 10px;
+    }
+    #epgNow { font-weight: bold; color: #ccc; }
+    #search, #categorySelect {
+      width: 48%; padding: 8px; font-size: 16px;
+      margin: 10px 1%; border-radius: 6px; border: none;
+    }
+    #gridContainer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .channelCard {
+      width: 45%; margin: 10px;
+      background: #1a1a1a; border-radius: 12px;
+      padding: 10px; text-align: center; box-shadow: 0 2px 8px #000;
+    }
+    .channelCard img {
+      width: 100%; height: 100px; object-fit: contain; border-radius: 8px;
+    }
+    .favoriteBtn {
+      background: transparent; border: none; color: #ffcc00; font-size: 20px; margin-top: 4px;
+    }
+    #settingsBtn, #logoutBtn {
+      position: fixed;
+      bottom: 20px;
+      width: 40px; height: 40px;
+      background: #ff5722;
+      border-radius: 50%; text-align: center; line-height: 40px;
+      color: white; font-size: 20px;
+    }
+    #settingsBtn { right: 20px; }
+    #logoutBtn { left: 20px; }
+    #buffering {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8); padding: 20px;
+      border-radius: 10px; display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div id="logo">IPTV Premium</div>
+    <div id="clock"></div>
+  </header>
+  <video id="videoPlayer" controls autoplay></video>
 
-const M3U_URL = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u"; const EPG_URL = "https://tinyurl.com/DrewLive002-epg";
+  <div id="nowPlaying">
+    <img id="nowIcon" src="" alt="Icon">
+    <div>
+      <div id="nowTitle">Now Playing</div>
+      <div id="epgNow"></div>
+    </div>
+  </div>
 
-let channels = []; let favorites = JSON.parse(localStorage.getItem("favorites") || "[]"); let lastWatched = localStorage.getItem("lastWatched") || null; let currentIndex = 0;
+  <div style="padding: 10px; display: flex; justify-content: space-between;">
+    <input type="text" id="search" placeholder="Search channels...">
+    <select id="categorySelect"></select>
+  </div>
 
-async function fetchM3U() { try { const res = await fetch(M3U_URL); const text = await res.text(); parseM3U(text); renderChannels(); if (lastWatched) playChannel(lastWatched); } catch (e) { console.error("Failed to load M3U:", e); } }
+  <div id="gridContainer"></div>
 
-function parseM3U(data) { const lines = data.split(/\r?\n/); for (let i = 0; i < lines.length; i++) { if (lines[i].startsWith("#EXTINF")) { const infoLine = lines[i]; const url = lines[i + 1]; const nameMatch = infoLine.match(/,(.)$/); const logoMatch = infoLine.match(/tvg-logo="(.?)"/); const groupMatch = infoLine.match(/group-title="(.*?)"/); channels.push({ name: nameMatch ? nameMatch[1] : "Unnamed", logo: logoMatch ? logoMatch[1] : "", group: groupMatch ? groupMatch[1] : "Uncategorized", url }); } } }
+  <div id="buffering">Buffering...</div>
+  <button id="settingsBtn">⚙️</button>
+  <button id="logoutBtn">🚪</button>
 
-function renderChannels() { const grid = document.getElementById("channel-grid"); if (!grid) return; grid.innerHTML = "";
+  <script src="iptv-core.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
+  <script>
+    // Firebase Config
+    firebase.initializeApp({
+      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+      authDomain: "iptv-log-in.firebaseapp.com",
+      projectId: "iptv-log-in",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
+    });
 
-channels.forEach((ch, idx) => { const card = document.createElement("div"); card.className = "channel-card"; card.innerHTML = <img src="${ch.logo}" onerror="this.src='fallback.png'"> <span>${ch.name}</span> <button onclick="toggleFavorite(${idx})"> ${favorites.includes(ch.url) ? "★" : "☆"} </button>; card.onclick = () => playChannel(ch.url, idx); grid.appendChild(card); }); }
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) window.location.href = "index.html";
+    });
 
-function playChannel(url, idx) { const player = document.getElementById("video-player"); const banner = document.getElementById("now-playing"); const icon = document.getElementById("channel-icon");
+    document.getElementById("logoutBtn").onclick = () => {
+      firebase.auth().signOut().then(() => window.location.href = "index.html");
+    }
 
-const channel = channels.find(c => c.url === url); if (!channel || !player) return;
-
-player.src = channel.url; player.play(); localStorage.setItem("lastWatched", channel.url);
-
-if (banner) banner.textContent = channel.name; if (icon && channel.logo) icon.src = channel.logo;
-
-showEPGNow(channel.name); }
-
-function toggleFavorite(index) { const url = channels[index].url; const i = favorites.indexOf(url); if (i >= 0) favorites.splice(i, 1); else favorites.push(url); localStorage.setItem("favorites", JSON.stringify(favorites)); renderChannels(); }
-
-function showEPGNow(channelName) { fetch(EPG_URL) .then(res => res.json()) .then(data => { const match = data.find(epg => epg.name?.toLowerCase() === channelName.toLowerCase()); if (match && match.now) { const now = document.getElementById("epg-now"); if (now) now.textContent = match.now; } }) .catch(console.error); }
-
-document.addEventListener("DOMContentLoaded", fetchM3U);
-
+    // Live clock
+    setInterval(() => {
+      document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+    }, 1000);
+  </script>
+</body>
+</html>
