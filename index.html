@@ -3,17 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IPTV Web App</title>
+  <title>IPTV Carousel Web App</title>
   <style>
     body { margin: 0; font-family: sans-serif; background: #111; color: #fff; }
     .video-container { position: sticky; top: 0; background: #000; z-index: 1000; }
     video { width: 100%; height: 300px; background: #000; }
+
     .controls { padding: 1rem; }
-    input, select { width: 100%; padding: 0.5rem; margin-bottom: 1rem; background: #222; color: #fff; border: none; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
-    .channel { background: #222; padding: 0.5rem; border-radius: 8px; cursor: pointer; }
-    .channel img { width: 100%; height: 80px; object-fit: contain; background: #000; }
-    .favorite { color: gold; font-size: 0.8rem; }
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      background: #222;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .carousel-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .carousel {
+      display: flex;
+      transition: transform 0.3s ease-in-out;
+      width: 100%;
+    }
+
+    .carousel-slide {
+      min-width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+
+    .channel {
+      background: #222;
+      padding: 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .channel:hover {
+      background: #333;
+    }
+
+    .channel img {
+      width: 100%;
+      height: 80px;
+      object-fit: contain;
+      background: #000;
+      border-radius: 4px;
+    }
+
+    .favorite {
+      color: gold;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .nav-btn {
+      background: #111;
+      border: none;
+      color: #fff;
+      font-size: 2rem;
+      padding: 0 1rem;
+      cursor: pointer;
+      z-index: 10;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
@@ -27,7 +90,11 @@
   <select id="category"></select>
 </div>
 
-<div class="grid" id="channelGrid"></div>
+<div class="carousel-wrapper">
+  <button id="prevBtn" class="nav-btn">⟨</button>
+  <div class="carousel" id="channelGrid"></div>
+  <button id="nextBtn" class="nav-btn">⟩</button>
+</div>
 
 <script>
   const m3uUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/refs/heads/main/IPTVPREMIUM.m3u";
@@ -36,8 +103,8 @@
   const searchInput = document.getElementById("search");
   const categorySelect = document.getElementById("category");
 
-  let channels = [], filtered = [], favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-  let currentIndex = 0;
+  let channels = [], filtered = [], currentIndex = 0;
+  let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
 
   function parseM3U(data) {
     const lines = data.split(/\r?\n/);
@@ -67,6 +134,14 @@
     categorySelect.innerHTML = allGroups.map(g => `<option value="${g}">${g}</option>`).join("");
   }
 
+  function chunkArray(arr, size) {
+    const result = [];
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size));
+    }
+    return result;
+  }
+
   function renderChannels() {
     const search = searchInput.value.toLowerCase();
     const category = categorySelect.value;
@@ -75,22 +150,33 @@
       c.name.toLowerCase().includes(search)
     );
 
-    grid.innerHTML = filtered.map((ch, idx) => `
-      <div class="channel" onclick="playChannel(${idx})">
-        <img src="${ch.logo || 'https://via.placeholder.com/150x80?text=No+Logo'}" />
-        <div>${ch.name}</div>
-        <div class="favorite" onclick="toggleFavorite(event, '${ch.url}')">
-          ${favorites.includes(ch.url) ? "★ Favorite" : "☆ Add Favorite"}
-        </div>
+    const slides = chunkArray(filtered, 2);
+    const channelGrid = document.getElementById("channelGrid");
+
+    channelGrid.innerHTML = slides.map(slide => `
+      <div class="carousel-slide">
+        ${slide.map(ch => `
+          <div class="channel" onclick="playChannelByUrl('${ch.url}')">
+            <img src="${ch.logo || 'https://via.placeholder.com/150x80?text=No+Logo'}" />
+            <div>${ch.name}</div>
+            <div class="favorite" onclick="toggleFavorite(event, '${ch.url}')">
+              ${favorites.includes(ch.url) ? "★ Favorite" : "☆ Add Favorite"}
+            </div>
+          </div>
+        `).join("")}
       </div>
     `).join("");
+
+    currentIndex = 0;
+    updateCarousel();
   }
 
-  function playChannel(index) {
-    const ch = filtered[index];
-    currentIndex = index;
-    player.src = ch.url;
-    player.play();
+  function playChannelByUrl(url) {
+    const ch = channels.find(c => c.url === url);
+    if (ch) {
+      player.src = ch.url;
+      player.play();
+    }
   }
 
   function toggleFavorite(event, url) {
@@ -104,26 +190,49 @@
     renderChannels();
   }
 
-  function swipeHandler(e) {
-    const x = e.changedTouches[0].clientX;
-    const direction = x < window.innerWidth / 2 ? 1 : -1;
-    const nextIndex = currentIndex + direction;
-    if (filtered[nextIndex]) {
-      playChannel(nextIndex);
-    }
+  function updateCarousel() {
+    const carousel = document.getElementById("channelGrid");
+    carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
   }
 
-  player.addEventListener("touchend", swipeHandler);
+  document.getElementById("prevBtn").onclick = () => {
+    if (currentIndex > 0) {
+      currentIndex--;
+      updateCarousel();
+    }
+  };
+
+  document.getElementById("nextBtn").onclick = () => {
+    const maxSlide = Math.ceil(filtered.length / 2) - 1;
+    if (currentIndex < maxSlide) {
+      currentIndex++;
+      updateCarousel();
+    }
+  };
+
+  // Swipe Support
+  let touchStartX = 0;
+  grid.addEventListener("touchstart", (e) => {
+    touchStartX = e.changedTouches[0].clientX;
+  });
+
+  grid.addEventListener("touchend", (e) => {
+    const diffX = e.changedTouches[0].clientX - touchStartX;
+    if (diffX > 50) document.getElementById("prevBtn").click();
+    else if (diffX < -50) document.getElementById("nextBtn").click();
+  });
+
   searchInput.addEventListener("input", renderChannels);
   categorySelect.addEventListener("change", renderChannels);
 
+  // Init
   fetch(m3uUrl)
     .then(res => res.text())
     .then(data => {
       channels = parseM3U(data);
       updateCategoryOptions();
       renderChannels();
-      playChannel(0);
+      if (channels[0]) playChannelByUrl(channels[0].url);
     });
 </script>
 
