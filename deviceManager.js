@@ -1,38 +1,64 @@
 // deviceManager.js
 
-import { getDatabase, ref, get, set, remove, update, onValue } from "firebase/database"; import { getAuth } from "firebase/auth";
+import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+import { getDatabase, ref, onValue, set, remove, get, child } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
 
-// Generate or retrieve a unique device ID export function getDeviceId() { let deviceId = localStorage.getItem('deviceId'); if (!deviceId) { deviceId = crypto.randomUUID(); localStorage.setItem('deviceId', deviceId); } return deviceId; }
+const generateDeviceId = () => {
+  let deviceId = localStorage.getItem("device_id");
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem("device_id", deviceId);
+  }
+  return deviceId;
+};
 
-// Register the device, auto-remove oldest if over limit export async function registerDevice() { const auth = getAuth(); const user = auth.currentUser; const db = getDatabase(); const deviceId = getDeviceId(); const now = Date.now();
+export async function registerDevice() {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) return;
 
-const devicesRef = ref(db, users/${user.uid}/devices); const snapshot = await get(devicesRef);
+  const db = getDatabase();
+  const userDevicesRef = ref(db, `devices/${user.uid}`);
+  const snapshot = await get(userDevicesRef);
 
-if (snapshot.exists()) { const devices = snapshot.val(); const deviceCount = Object.keys(devices).length;
+  let devices = snapshot.exists() ? snapshot.val() : {};
+  const deviceId = generateDeviceId();
+  const timestamp = Date.now();
 
-if (devices[deviceId]) {
-  // Already registered, just update timestamp
-  await update(ref(db, `users/${user.uid}/devices/${deviceId}`), {
-    lastSeen: now,
+  // Check if this device already registered
+  if (devices[deviceId]) {
+    devices[deviceId].lastActive = timestamp;
+  } else {
+    devices[deviceId] = { lastActive: timestamp };
+  }
+
+  // If more than 2 devices, remove the oldest
+  const entries = Object.entries(devices);
+  if (entries.length > 2) {
+    const sorted = entries.sort((a, b) => a[1].lastActive - b[1].lastActive);
+    const [oldestDeviceId] = sorted[0];
+    delete devices[oldestDeviceId];
+  }
+
+  await set(userDevicesRef, devices);
+}
+
+export function watchDeviceRemoval() {
+  const auth = getAuth();
+  const db = getDatabase();
+  const deviceId = generateDeviceId();
+
+  auth.onAuthStateChanged((user) => {
+    if (!user) return;
+    const deviceRef = ref(db, `devices/${user.uid}/${deviceId}`);
+
+    onValue(deviceRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        alert("This device was removed from your account.");
+        signOut(auth).then(() => {
+          window.location.href = "login.html";
+        });
+      }
+    });
   });
-  return;
 }
-
-if (deviceCount >= 2) {
-  // Remove the least recently used device
-  const sorted = Object.entries(devices).sort((a, b) => a[1].lastSeen - b[1].lastSeen);
-  const oldestDeviceId = sorted[0][0];
-  await remove(ref(db, `users/${user.uid}/devices/${oldestDeviceId}`));
-}
-
-}
-
-// Register new device await set(ref(db, users/${user.uid}/devices/${deviceId}), { lastSeen: now, platform: navigator.userAgent, }); }
-
-// Optional: Monitor if device is removed export function watchDeviceRemoval() { const auth = getAuth(); const db = getDatabase(); const deviceId = getDeviceId();
-
-const deviceRef = ref(db, users/${auth.currentUser.uid}/devices/${deviceId});
-
-onValue(deviceRef, (snapshot) => { if (!snapshot.exists()) { alert("You have been logged out because your account exceeded the 2-device limit."); auth.signOut(); localStorage.removeItem('deviceId'); window.location.reload(); } }); }
-
-  
