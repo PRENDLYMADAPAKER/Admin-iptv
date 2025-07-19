@@ -1,146 +1,130 @@
-/* Reset and base */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 body {
+  margin: 0;
+  font-family: sans-serif;
   background-color: #111;
   color: #fff;
-  font-family: 'Segoe UI', sans-serif;
-  padding: 0;
-  margin: 0;
 }
 
-/* Header with logo and logout */
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 0.5rem 1rem;
   background-color: #1a1a1a;
 }
 
-#logo {
+.app-logo {
   height: 40px;
+  width: auto;
 }
 
 #logout-btn {
-  padding: 8px 16px;
-  background-color: #e91e63;
-  color: #fff;
+  background-color: crimson;
+  color: white;
   border: none;
+  padding: 0.4rem 1rem;
   border-radius: 8px;
-  font-weight: bold;
   cursor: pointer;
 }
 
-#logout-btn:hover {
-  background-color: #c2185b;
+main {
+  padding: 1rem;
 }
 
-/* Video player */
 #video-player {
   width: 100%;
-  max-height: 250px;
-  background-color: #000;
-  display: block;
-  margin: 0 auto;
+  max-height: 300px;
+  border-radius: 10px;
+  margin-bottom: 1rem;
 }
 
-/* Channel info under video */
-.channel-info {
+.now-playing {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  font-size: 1rem;
-  border-bottom: 1px solid #333;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 #channel-icon {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
+  height: 30px;
+  width: 30px;
+  border-radius: 6px;
 }
 
-/* Controls */
 .controls {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-#search-bar,
-#category-filter {
-  padding: 10px;
-  border-radius: 8px;
+#search-bar, #category-filter {
+  padding: 0.6rem;
+  border-radius: 6px;
   border: none;
   font-size: 1rem;
-  background-color: #222;
-  color: #fff;
 }
 
-/* Channel grid */
 .channel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 16px;
-  padding: 16px;
+  gap: 1rem;
 }
 
-/* Individual channel card */
 .channel-card {
-  background-color: #1e1e1e;
-  padding: 12px;
-  border-radius: 12px;
+  background-color: #222;
+  padding: 0.8rem;
+  border-radius: 10px;
   text-align: center;
-  transition: background-color 0.3s ease;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
 
 .channel-card:hover {
-  background-color: #2c2c2c;
-  cursor: pointer;
+  transform: scale(1.03);
 }
 
 .channel-card img {
   width: 100%;
-  height: 60px;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+/* Swipe Carousel */
+.carousel-container {
+  display: flex;
+  overflow-x: auto;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.carousel-container::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-item {
+  min-width: 100px;
+  background-color: #222;
+  border-radius: 10px;
+  text-align: center;
+  padding: 0.5rem;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.carousel-item img {
+  width: 80px;
+  height: 50px;
   object-fit: contain;
-  margin-bottom: 8px;
+  margin-bottom: 0.4rem;
 }
 
-.channel-card .channel-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.channel-card .favorite-star {
-  color: gold;
-  font-size: 1.2rem;
-}
-
-/* Responsive adjustments */
-@media (min-width: 768px) {
-  #video-player {
-    max-height: 500px;
-  }
-
+/* Responsive */
+@media (min-width: 600px) {
   .controls {
     flex-direction: row;
-    justify-content: space-between;
     align-items: center;
-  }
-
-  #search-bar {
-    flex: 1;
-    margin-right: 10px;
-  }
-
-  #category-filter {
-    width: 150px;
+    justify-content: space-between;
   }
 }
