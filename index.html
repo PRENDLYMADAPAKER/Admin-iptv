@@ -3,205 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IPTV Premium</title>
+  <title>IPTV Web</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script defer src="firebase.js"></script>
   <script defer src="iptv.js"></script>
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #0f0f0f;
-      color: #fff;
-    }
-    #login-container, #iptv-container {
-      display: none;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    #login-container {
-      background: url('https://i.imgur.com/2M7Vw6o.jpeg') no-repeat center center;
-      background-size: cover;
-    }
-    .login-box {
-      background: rgba(0,0,0,0.8);
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-      width: 100%;
-      max-width: 320px;
-    }
-    .login-box img {
-      width: 120px;
-      margin-bottom: 10px;
-    }
-    input[type="email"], input[type="password"] {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-    }
-    button {
-      width: 100%;
-      padding: 10px;
-      background-color: #00ffff;
-      color: #000;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    .toggle-password {
-      position: relative;
-      float: right;
-      margin-top: -34px;
-      margin-right: 10px;
-      cursor: pointer;
-    }
-    video {
-      width: 100%;
-      max-height: 280px;
-      background: #000;
-      border-radius: 12px;
-      margin-bottom: 10px;
-    }
-    #channel-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .channel-card {
-      background: #1a1a1a;
-      padding: 5px;
-      border-radius: 8px;
-      text-align: center;
-      cursor: pointer;
-    }
-    .channel-card img {
-      width: 100%;
-      height: 60px;
-      object-fit: contain;
-      margin-bottom: 4px;
-    }
-    .favorite {
-      font-size: 18px;
-      color: gold;
-      cursor: pointer;
-    }
-    #top-bar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 15px;
-    }
-    #channel-name {
-      font-size: 16px;
-      font-weight: bold;
-    }
-    #logout-btn {
-      background: #ff4d4d;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    #category-filter, #search-bar {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 6px;
-      border: none;
-      width: 48%;
-    }
-    @media screen and (max-width: 500px) {
-      #category-filter, #search-bar {
-        width: 100%;
-      }
-    }
-  </style>
+  <style>body { visibility: hidden; }</style>
 </head>
 <body>
 
-<!-- LOGIN UI -->
-<div id="login-container">
-  <div class="login-box">
-    <img src="https://i.imgur.com/3v3oIXN.png" alt="IPTV Logo">
-    <h2>Login to IPTV</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <span class="toggle-password" onclick="togglePassword()">👁️</span>
-    <button onclick="login()">Login</button>
-  </div>
-</div>
-
-<!-- IPTV UI -->
-<div id="iptv-container">
-  <div id="top-bar">
-    <span id="channel-name">Loading...</span>
+  <!-- HEADER -->
+  <header>
+    <img src="logo.png" alt="Logo" class="logo" />
+    <div id="clock"></div>
     <button id="logout-btn">Logout</button>
+  </header>
+
+  <!-- VIDEO PLAYER -->
+  <div id="video-player-container">
+    <video id="video-player" controls autoplay></video>
   </div>
-  <video id="video-player" controls autoplay></video>
-  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+
+  <!-- NOW PLAYING -->
+  <div id="now-playing">
+    <img src="https://img.icons8.com/ios-filled/50/ffffff/television.png" />
+    <span id="now-playing-title">Now Playing</span>
+  </div>
+
+  <!-- SEARCH & FILTER -->
+  <div id="search-container">
     <input type="text" id="search-bar" placeholder="Search channel...">
-    <select id="category-filter"></select>
+    <select id="category-filter">
+      <option value="All">All Categories</option>
+    </select>
   </div>
+
+  <!-- CHANNELS -->
   <div id="channel-grid"></div>
-</div>
 
-<script>
-  function togglePassword() {
-    const password = document.getElementById("password");
-    password.type = password.type === "password" ? "text" : "password";
-  }
+  <!-- AUTH CHECK + LOGOUT -->
+  <script>
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
 
-  function login() {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    firebase.auth().signInWithEmailAndPassword(email, password)
-      .then(userCredential => {
-        const user = userCredential.user;
-        const deviceId = navigator.userAgent + screen.width + screen.height;
-        const ref = firebase.firestore().collection("devices").doc(user.uid);
-        ref.get().then(doc => {
-          const devices = doc.exists ? doc.data().list || [] : [];
-          if (!devices.includes(deviceId)) {
-            if (devices.length >= 2) {
-              alert("Maximum 2 devices allowed.");
-              firebase.auth().signOut();
-              return;
-            }
+      // Limit to 2 devices max
+      const deviceId = localStorage.getItem("device_id") || crypto.randomUUID();
+      localStorage.setItem("device_id", deviceId);
+
+      const db = firebase.firestore();
+      const userRef = db.collection("device_limits").doc(user.uid);
+      const doc = await userRef.get();
+
+      let allowed = true;
+      if (!doc.exists) {
+        await userRef.set({ devices: [deviceId] });
+      } else {
+        const devices = doc.data().devices || [];
+        if (!devices.includes(deviceId)) {
+          if (devices.length >= 2) {
+            alert("Maximum 2 devices allowed.");
+            await firebase.auth().signOut();
+            localStorage.removeItem("device_id");
+            window.location.href = "login.html";
+            return;
+          } else {
             devices.push(deviceId);
-            ref.set({ list: devices });
+            await userRef.update({ devices });
           }
-          document.getElementById("login-container").style.display = "none";
-          document.getElementById("iptv-container").style.display = "flex";
-        });
-      })
-      .catch(err => alert(err.message));
-  }
+        }
+      }
 
-  firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-      document.getElementById("login-container").style.display = "none";
-      document.getElementById("iptv-container").style.display = "flex";
-    } else {
-      document.getElementById("login-container").style.display = "flex";
-      document.getElementById("iptv-container").style.display = "none";
-    }
-  });
-</script>
+      document.body.style.visibility = "visible";
+    });
 
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      const user = firebase.auth().currentUser;
+      const deviceId = localStorage.getItem("device_id");
+
+      if (user && deviceId) {
+        const db = firebase.firestore();
+        const ref = db.collection("device_limits").doc(user.uid);
+        const doc = await ref.get();
+
+        if (doc.exists) {
+          let devices = doc.data().devices || [];
+          devices = devices.filter(d => d !== deviceId);
+          await ref.set({ devices });
+        }
+      }
+
+      await firebase.auth().signOut();
+      localStorage.removeItem("device_id");
+      window.location.href = "login.html";
+    });
+
+    // Clock
+    setInterval(() => {
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById("clock").textContent = time;
+    }, 1000);
+  </script>
 </body>
 </html>
