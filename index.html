@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NZM IPTV Admin</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #121212;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px #ff007f;
+      width: 100%;
+      max-width: 400px;
+    }
+    h2 {
+      margin-top: 0;
+      text-align: center;
+      color: #ff007f;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #222;
+      border: none;
+      border-radius: 6px;
+      color: white;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #ff007f;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #adminPanel {
+      display: none;
+    }
+    #logoutBtn {
+      background: #e53935;
+      margin-top: 20px;
+    }
+    #error, #status {
+      text-align: center;
+      margin-top: 10px;
+      color: #f44336;
+    }
+    #status {
+      color: #00e676;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div id="loginPanel">
+    <h2>Admin Login</h2>
+    <input type="email" id="adminEmail" placeholder="Admin Email">
+    <input type="password" id="adminPassword" placeholder="Password">
+    <button onclick="adminLogin()">Login</button>
+    <div id="error"></div>
+  </div>
+
+  <div id="adminPanel">
+    <h2>Create IPTV Account</h2>
+    <input type="email" id="newEmail" placeholder="New User Email">
+    <input type="password" id="newPassword" placeholder="New User Password">
+    <button onclick="createUser()">Create Account</button>
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+    authDomain: "iptv-log-in.firebaseapp.com",
+    projectId: "iptv-log-in",
+    databaseURL: "https://iptv-log-in-default-rtdb.asia-southeast1.firebasedatabase.app",
+    storageBucket: "iptv-log-in.appspot.com",
+    messagingSenderId: "820026131349",
+    appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  const allowedAdmin = "admin@nzmiptv.com"; // ✳️ Change to your admin email
+
+  async function adminLogin() {
+    const email = document.getElementById("adminEmail").value;
+    const password = document.getElementById("adminPassword").value;
+    const errorDiv = document.getElementById("error");
+
+    try {
+      const result = await auth.signInWithEmailAndPassword(email, password);
+      if (result.user.email !== allowedAdmin) {
+        errorDiv.textContent = "Access denied. Not an admin.";
+        await auth.signOut();
+        return;
+      }
+      document.getElementById("loginPanel").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
+    } catch (err) {
+      errorDiv.textContent = err.message;
+    }
+  }
+
+  async function createUser() {
+    const newEmail = document.getElementById("newEmail").value;
+    const newPassword = document.getElementById("newPassword").value;
+    const statusDiv = document.getElementById("status");
+
+    try {
+      // Use secondary app to create users
+      const secondaryApp = firebase.initializeApp(firebase.app().options, "Secondary");
+      await secondaryApp.auth().createUserWithEmailAndPassword(newEmail, newPassword);
+      statusDiv.textContent = `✅ Created account for ${newEmail}`;
+      secondaryApp.delete();
+    } catch (err) {
+      statusDiv.textContent = `❌ ${err.message}`;
+    }
+  }
+
+  function logout() {
+    auth.signOut().then(() => {
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("loginPanel").style.display = "block";
+      document.getElementById("adminEmail").value = '';
+      document.getElementById("adminPassword").value = '';
+      document.getElementById("error").textContent = '';
+      document.getElementById("status").textContent = '';
+    });
+  }
+</script>
+
+</body>
+</html>
