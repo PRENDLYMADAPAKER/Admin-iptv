@@ -1,90 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>IPTV Admin Panel</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NZM Admin Panel</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
   <style>
     body {
-      background: url('https://i.ibb.co/BqgjBpH/anony-bg.jpg') no-repeat center center fixed;
-      background-size: cover;
-      font-family: Arial, sans-serif;
-      color: white;
       margin: 0;
-      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: url('https://i.imgur.com/yeftKeD.jpeg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
     }
-    .panel {
-      background: rgba(0, 0, 0, 0.85);
-      padding: 20px;
+    .glass {
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(10px);
       border-radius: 12px;
-      max-width: 500px;
-      margin: 60px auto;
+      padding: 20px;
+      margin: 20px auto;
+      width: 95%;
+      max-width: 900px;
+      box-shadow: 0 0 20px #000;
     }
-    h1 {
-      text-align: center;
-      color: #ff0077;
-    }
-    table {
-      width: 100%;
-      margin-top: 15px;
-    }
-    th, td {
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      color: #ff0077;
+    h2, h3 {
+      margin-top: 0;
+      color: #ff007f;
     }
     input, button {
-      width: 100%;
       padding: 10px;
-      margin-top: 10px;
-      border-radius: 6px;
+      margin: 5px 0;
       border: none;
+      border-radius: 8px;
+      width: 100%;
+    }
+    input {
+      background: #222;
+      color: white;
     }
     button {
-      background: #ff0077;
+      background: #ff007f;
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
+    .user-box {
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px 0;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .user-box span {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .actions button {
+      margin-right: 10px;
+      margin-top: 5px;
+    }
   </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>🔥 IPTV Admin Panel 🔥</h1>
-    <div>
-      <h3>Real-time Users</h3>
-      <table border="1">
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>UID</th>
-            <th>Force Logout</th>
-          </tr>
-        </thead>
-        <tbody id="userTable">
-          <tr><td colspan="3">Loading users...</td></tr>
-        </tbody>
-      </table>
+  <div class="glass">
+    <h2>👑 NZM IPTV Admin Panel</h2>
+    <div id="authSection">
+      <h3>Login</h3>
+      <input type="email" id="adminEmail" placeholder="Admin Email" />
+      <input type="password" id="adminPass" placeholder="Password" />
+      <button onclick="adminLogin()">Login</button>
+      <p id="loginError" style="color: red;"></p>
     </div>
 
-    <hr style="margin:20px 0; border-color:#555;">
+    <div id="dashboard" style="display: none;">
+      <h3>Create New IPTV Account</h3>
+      <input type="email" id="newEmail" placeholder="New Email" />
+      <input type="password" id="newPassword" placeholder="Password" />
+      <button onclick="createUser()">Create Account</button>
+      <p id="createStatus" style="color: lightgreen;"></p>
 
-    <div>
-      <h3>Add New IPTV User</h3>
-      <input type="email" id="newEmail" placeholder="Email">
-      <input type="password" id="newPassword" placeholder="Password">
-      <button onclick="createAccount()">Create Account</button>
+      <h3>All Users</h3>
+      <div id="userList"></div>
     </div>
   </div>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
   <script>
-    // Firebase config (from your screenshot)
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
       authDomain: "iptv-log-in.firebaseapp.com",
@@ -92,92 +95,103 @@
       projectId: "iptv-log-in",
       storageBucket: "iptv-log-in.appspot.com",
       messagingSenderId: "820026131349",
-      appId: "1:820026131349:web:417abd6ad9057c55a92c9c",
-      measurementId: "G-4Y8T6J595Z"
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
-
-    // Init Firebase
     firebase.initializeApp(firebaseConfig);
+
     const auth = firebase.auth();
     const db = firebase.database();
+    const functions = firebase.app().functions('asia-southeast1');
 
-    // Load user list
-    async function loadUsers() {
-      const result = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + firebaseConfig.apiKey, {
-        method: "POST",
-        body: JSON.stringify({
-          email: "admin@nzmiptv.com",
-          password: "admin123",
-          returnSecureToken: true
-        }),
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
-      const tokenData = await result.json();
+    const authSection = document.getElementById('authSection');
+    const dashboard = document.getElementById('dashboard');
+    const userList = document.getElementById('userList');
 
-      if (tokenData.idToken) {
-        const userTable = document.getElementById("userTable");
-        userTable.innerHTML = "";
-
-        const listRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseConfig.apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken: tokenData.idToken })
+    function adminLogin() {
+      const email = document.getElementById('adminEmail').value;
+      const pass = document.getElementById('adminPass').value;
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(() => {
+          authSection.style.display = 'none';
+          dashboard.style.display = 'block';
+          fetchUsers();
+        })
+        .catch(e => {
+          document.getElementById('loginError').textContent = e.message;
         });
+    }
 
-        const userList = await listRes.json();
+    function createUser() {
+      const email = document.getElementById('newEmail').value;
+      const pass = document.getElementById('newPassword').value;
+      functions.httpsCallable('createUser')({ email, password: pass })
+        .then(res => {
+          document.getElementById('createStatus').textContent = `Created UID: ${res.data.uid}`;
+          fetchUsers();
+        })
+        .catch(e => {
+          document.getElementById('createStatus').textContent = e.message;
+        });
+    }
 
-        db.ref("sessions").once("value", snapshot => {
-          const sessions = snapshot.val() || {};
-
-          userList.users.forEach(user => {
-            const uid = user.localId;
-            const email = user.email || "N/A";
-            const row = document.createElement("tr");
-
-            const forceLogout = () => {
-              const userSessions = sessions[uid] || {};
-              const keys = Object.keys(userSessions);
-              keys.forEach(deviceId => {
-                db.ref(`sessions/${uid}/${deviceId}`).remove();
-              });
-              alert(`✅ All sessions for ${email} have been force logged out.`);
-            };
-
-            row.innerHTML = `
-              <td>${email}</td>
-              <td>${uid}</td>
-              <td><button onclick="(${forceLogout.toString()})()">Force Logout</button></td>
+    function fetchUsers() {
+      userList.innerHTML = 'Loading...';
+      functions.httpsCallable('listUsers')()
+        .then(res => {
+          userList.innerHTML = '';
+          res.data.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'user-box';
+            div.innerHTML = `
+              <span><strong>Email:</strong> ${user.email}</span>
+              <span><strong>UID:</strong> ${user.uid}</span>
+              <span><strong>Status:</strong> ${user.disabled ? '🔒 Banned' : '✅ Active'}</span>
+              <div class="actions">
+                <button onclick="banUser('${user.uid}')">🚫 Ban</button>
+                <button onclick="unbanUser('${user.uid}')">✅ Unban</button>
+              </div>
+              <div>
+                <h4>Devices:</h4>
+                <div id="sessions-${user.uid}">Loading...</div>
+              </div>
             `;
-            userTable.appendChild(row);
+            userList.appendChild(div);
+            loadSessions(user.uid);
           });
         });
-      } else {
-        alert("❌ Failed to authenticate admin.");
-      }
     }
 
-    // Create new user
-    function createAccount() {
-      const email = document.getElementById("newEmail").value;
-      const password = document.getElementById("newPassword").value;
-
-      if (!email || !password) return alert("Fill in both fields.");
-      auth.createUserWithEmailAndPassword(email, password)
-        .then(() => {
-          alert("✅ User created!");
-          document.getElementById("newEmail").value = "";
-          document.getElementById("newPassword").value = "";
-          loadUsers();
-        })
-        .catch(err => alert("❌ " + err.message));
+    function banUser(uid) {
+      functions.httpsCallable('disableUser')({ uid }).then(fetchUsers);
     }
 
-    // Auto load
-    window.onload = () => {
-      loadUsers();
-    };
+    function unbanUser(uid) {
+      functions.httpsCallable('enableUser')({ uid }).then(fetchUsers);
+    }
+
+    function loadSessions(uid) {
+      const ref = db.ref(`sessions/${uid}`);
+      const target = document.getElementById(`sessions-${uid}`);
+      ref.on('value', snap => {
+        const data = snap.val();
+        if (!data) return target.innerHTML = '<em>No active sessions</em>';
+        target.innerHTML = '';
+        Object.keys(data).forEach(deviceId => {
+          const div = document.createElement('div');
+          div.innerHTML = `
+            📱 ${deviceId}
+            <button onclick="forceLogout('${uid}', '${deviceId}')">❌ Logout</button>
+          `;
+          target.appendChild(div);
+        });
+      });
+    }
+
+    function forceLogout(uid, deviceId) {
+      functions.httpsCallable('forceLogout')({ uid, deviceId })
+        .then(() => alert('Device has been logged out.'))
+        .catch(e => alert('Error: ' + e.message));
+    }
   </script>
 </body>
 </html>
