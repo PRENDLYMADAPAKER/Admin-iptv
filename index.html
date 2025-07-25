@@ -1,96 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>NZM Admin Panel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Firebase SDKs -->
+  <meta charset="UTF-8" />
+  <title>Admin Panel - NZM IPTV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
   <style>
     body {
-      background: #0e0e0e;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      color: #ff007f;
-      text-align: center;
-    }
-    .card {
-      background: rgba(30,30,30,0.9);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px #ff007f;
-      max-width: 600px;
-      margin: 20px auto;
-    }
-    input {
-      padding: 10px;
-      width: calc(100% - 20px);
-      margin-bottom: 10px;
-      border: none;
-      border-radius: 6px;
-      background: #222;
+      font-family: 'Segoe UI', sans-serif;
+      background: url('https://i.ibb.co/s61PDpF/anonymous-vendetta-mask-dark.jpg') no-repeat center center fixed;
+      background-size: cover;
       color: white;
+      backdrop-filter: blur(8px);
     }
-    button {
+    .container {
+      max-width: 960px;
+      margin: auto;
+      padding: 20px;
+      background-color: rgba(0,0,0,0.6);
+      border-radius: 12px;
+    }
+    h1 { text-align: center; color: #ff007f; }
+    .section { margin-bottom: 40px; }
+    input, button {
       padding: 10px;
+      margin: 5px;
+      border-radius: 6px;
+      border: none;
+    }
+    input { width: 200px; background: #222; color: white; }
+    button {
       background: #ff007f;
       color: white;
-      border: none;
-      border-radius: 6px;
-      width: 100%;
       cursor: pointer;
-      font-weight: bold;
-      margin-top: 5px;
     }
+    button.danger { background: #e53935; }
     .user-card {
-      background: #1c1c1c;
-      padding: 10px;
-      margin-top: 10px;
+      background: #1e1e1e;
       border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
     }
     .user-card h3 {
       margin: 0 0 8px 0;
+      color: #ff66a3;
     }
     .session {
-      background: #2a2a2a;
-      margin: 5px 0;
-      padding: 8px;
-      border-radius: 5px;
       font-size: 0.9rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .session button {
-      background: #e53935;
-      font-size: 0.8rem;
-      width: auto;
-      padding: 4px 8px;
+      margin-left: 10px;
+      color: #aaa;
     }
   </style>
 </head>
 <body>
-  <h1>NZM Admin Panel</h1>
+  <div class="container">
+    <h1>NZM Admin Panel</h1>
 
-  <div class="card">
-    <h2>Create New Account</h2>
-    <input type="email" id="newEmail" placeholder="Email">
-    <input type="password" id="newPassword" placeholder="Password">
-    <button onclick="createUser()">Create Account</button>
-    <p id="createMsg" style="color: lightgreen;"></p>
-  </div>
+    <div class="section">
+      <h2>Create New Account</h2>
+      <input type="email" id="newEmail" placeholder="Email">
+      <input type="password" id="newPassword" placeholder="Password">
+      <button onclick="createAccount()">Create</button>
+      <p id="createStatus"></p>
+    </div>
 
-  <div class="card">
-    <h2>User Sessions</h2>
-    <button onclick="loadUsers()">Load Users</button>
-    <div id="userList"></div>
+    <div class="section">
+      <h2>User List</h2>
+      <div id="userList">Loading...</div>
+    </div>
   </div>
 
   <script>
@@ -103,63 +85,92 @@
       messagingSenderId: "820026131349",
       appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
-
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    const functions = firebase.functions();
     const db = firebase.database();
 
-    function createUser() {
-      const email = document.getElementById('newEmail').value;
-      const password = document.getElementById('newPassword').value;
-      auth.createUserWithEmailAndPassword(email, password)
-        .then(() => {
-          document.getElementById('createMsg').innerText = "Account created successfully.";
-        })
-        .catch(error => {
-          document.getElementById('createMsg').innerText = error.message;
-        });
+    async function createAccount() {
+      const email = document.getElementById("newEmail").value;
+      const password = document.getElementById("newPassword").value;
+      const status = document.getElementById("createStatus");
+      status.textContent = "Creating...";
+
+      try {
+        const createUser = functions.httpsCallable('createUser');
+        const result = await createUser({ email, password });
+        status.textContent = `✅ Created user: ${result.data.uid}`;
+        loadUsers();
+      } catch (err) {
+        status.textContent = "❌ Error: " + err.message;
+      }
     }
 
     async function loadUsers() {
-      const userList = document.getElementById('userList');
-      userList.innerHTML = "Loading users...";
+      const list = document.getElementById("userList");
+      list.innerHTML = "Loading users...";
+      try {
+        const listUsers = functions.httpsCallable('listUsers');
+        const result = await listUsers();
+        const users = result.data.users;
+        list.innerHTML = "";
 
-      const sessionsSnap = await db.ref("sessions").once("value");
-      const sessionData = sessionsSnap.val() || {};
-      userList.innerHTML = "";
+        users.forEach(user => {
+          const div = document.createElement("div");
+          div.className = "user-card";
+          div.innerHTML = `<h3>${user.email || "No Email"} <small>(${user.uid})</small></h3>`;
 
-      for (const uid in sessionData) {
-        const sessions = sessionData[uid];
-        const sessionIds = Object.keys(sessions);
-        const card = document.createElement('div');
-        card.className = 'user-card';
-        card.innerHTML = `<h3>UID: ${uid}</h3><p><b>Logged-in Devices:</b> ${sessionIds.length}</p>`;
+          const banBtn = document.createElement("button");
+          banBtn.textContent = user.disabled ? "Unban" : "Ban";
+          banBtn.onclick = () => toggleBan(user.uid, !user.disabled);
 
-        sessionIds.forEach(sessionId => {
-          const sessionDiv = document.createElement('div');
-          sessionDiv.className = 'session';
-          const date = new Date(sessions[sessionId]).toLocaleString();
-          sessionDiv.innerHTML = `
-            <span><b>ID:</b> ${sessionId}<br/><small>${date}</small></span>
-            <button onclick="logoutSession('${uid}', '${sessionId}')">Logout</button>
-          `;
-          card.appendChild(sessionDiv);
+          div.appendChild(banBtn);
+
+          // Fetch sessions
+          const sessionsRef = db.ref(`sessions/${user.uid}`);
+          sessionsRef.once("value").then(snapshot => {
+            const sessions = snapshot.val() || {};
+            Object.keys(sessions).forEach(sid => {
+              const p = document.createElement("p");
+              p.className = "session";
+              const d = new Date(sessions[sid]);
+              p.textContent = `Device: ${sid} — ${d.toLocaleString()}`;
+
+              const logoutBtn = document.createElement("button");
+              logoutBtn.textContent = "Force Logout";
+              logoutBtn.className = "danger";
+              logoutBtn.onclick = () => forceLogout(user.uid, sid);
+
+              p.appendChild(logoutBtn);
+              div.appendChild(p);
+            });
+          });
+
+          list.appendChild(div);
         });
 
-        userList.appendChild(card);
+      } catch (err) {
+        list.innerHTML = "❌ Error: " + err.message;
       }
     }
 
-    function logoutSession(uid, sessionId) {
-      if (confirm("Force logout this session?")) {
-        db.ref(`sessions/${uid}/${sessionId}`).remove()
-          .then(() => {
-            alert("Session removed.");
-            loadUsers();
-          })
-          .catch(err => alert("Error: " + err.message));
+    async function toggleBan(uid, disable) {
+      try {
+        const toggle = functions.httpsCallable("toggleBan");
+        await toggle({ uid, disable });
+        alert(`User ${disable ? "banned" : "unbanned"}`);
+        loadUsers();
+      } catch (e) {
+        alert("❌ " + e.message);
       }
     }
+
+    function forceLogout(uid, sessionId) {
+      db.ref(`sessions/${uid}/${sessionId}`).remove()
+        .then(() => alert("✅ Session removed"))
+        .catch(err => alert("❌ Error: " + err.message));
+    }
+
+    loadUsers();
   </script>
 </body>
 </html>
