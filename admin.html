@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IPTV Admin Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: url('https://i.ibb.co/DLCr1ZL/v-anonymous.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+    }
+    .container {
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      max-width: 900px;
+      margin: 40px auto;
+      border-radius: 10px;
+    }
+    h1 {
+      text-align: center;
+      color: #ff0059;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #444;
+    }
+    th {
+      color: #ff0059;
+    }
+    button {
+      background-color: #ff0059;
+      color: white;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #e6004c;
+    }
+    .add-user-form {
+      margin-top: 30px;
+    }
+    input {
+      padding: 8px;
+      margin-right: 10px;
+      border-radius: 4px;
+      border: none;
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔥 IPTV Admin Panel 🔥</h1>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>UID</th>
+          <th>Force Logout</th>
+        </tr>
+      </thead>
+      <tbody id="userList">
+        <!-- Loaded from Firebase -->
+      </tbody>
+    </table>
+
+    <div class="add-user-form">
+      <h2>Add New IPTV User</h2>
+      <input type="email" id="newEmail" placeholder="Email">
+      <input type="password" id="newPassword" placeholder="Password">
+      <button onclick="createNewUser()">Create Account</button>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Your Firebase config (same as sa IPTV Web app)
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+      authDomain: "iptv-log-in.firebaseapp.com",
+      databaseURL: "https://iptv-log-in-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "iptv-log-in",
+      storageBucket: "iptv-log-in.appspot.com",
+      messagingSenderId: "820026131349",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    // Load active users from Realtime DB
+    function loadUsers() {
+      const userList = document.getElementById("userList");
+      db.ref("activeUsers").on("value", (snapshot) => {
+        userList.innerHTML = "";
+        snapshot.forEach((child) => {
+          const user = child.val();
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${user.email}</td>
+            <td>${child.key}</td>
+            <td><button onclick="forceLogout('${child.key}')">Logout</button></td>
+          `;
+          userList.appendChild(tr);
+        });
+      });
+    }
+
+    // Force logout function
+    function forceLogout(uid) {
+      db.ref("activeUsers/" + uid).remove()
+        .then(() => alert("✅ Forced logout successful!"))
+        .catch((err) => alert("Error: " + err.message));
+    }
+
+    // Add new user to Firebase Auth
+    function createNewUser() {
+      const email = document.getElementById("newEmail").value;
+      const password = document.getElementById("newPassword").value;
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => {
+          alert("✅ User created!");
+          document.getElementById("newEmail").value = "";
+          document.getElementById("newPassword").value = "";
+        })
+        .catch((err) => {
+          alert("❌ Error: " + err.message);
+        });
+    }
+
+    // Run on load
+    loadUsers();
+  </script>
+</body>
+</html>
