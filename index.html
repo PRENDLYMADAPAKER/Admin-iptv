@@ -1,7 +1,8 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>IPTV Admin Panel</title>
+  <title>IPTV Admin Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -64,7 +65,7 @@
           const user = userCredential.user;
           if (user.email === "admin@nzmiptv.com") {
             alert("✅ Welcome admin!");
-            // TODO: Redirect to dashboard or admin.html
+            window.location.href = "admin.html"; // ← Redirect here
           } else {
             alert("⛔ Not authorized as admin.");
             auth.signOut();
