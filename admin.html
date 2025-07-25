@@ -7,7 +7,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
   <style>
     body {
       margin: 0;
@@ -21,13 +20,12 @@
       backdrop-filter: blur(10px);
       border-radius: 12px;
       padding: 20px;
-      margin: 20px auto;
+      margin: 40px auto;
       width: 95%;
       max-width: 900px;
       box-shadow: 0 0 20px #000;
     }
     h2, h3 {
-      margin-top: 0;
       color: #ff007f;
     }
     input, button {
@@ -58,35 +56,23 @@
       display: block;
       margin-bottom: 5px;
     }
-    .actions button {
-      margin-right: 10px;
-      margin-top: 5px;
-    }
   </style>
 </head>
 <body>
   <div class="glass">
-    <h2>👑 NZM IPTV Admin Panel</h2>
-    <div id="authSection">
+    <h2>👑 NZM Admin Panel</h2>
+    <div id="loginBox">
       <h3>Login</h3>
-      <input type="email" id="adminEmail" placeholder="Admin Email" />
-      <input type="password" id="adminPass" placeholder="Password" />
-      <button onclick="adminLogin()">Login</button>
+      <input type="email" id="email" placeholder="Admin Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button onclick="login()">Login</button>
       <p id="loginError" style="color: red;"></p>
     </div>
 
-    <div id="dashboard" style="display: none;">
-      <h3>Create New IPTV Account</h3>
-      <input type="email" id="newEmail" placeholder="New Email" />
-      <input type="password" id="newPassword" placeholder="Password" />
-      <button onclick="createUser()">Create Account</button>
-      <p id="createStatus" style="color: lightgreen;"></p>
-
-      <h3 style="display: flex; justify-content: space-between; align-items: center;">
-        <span>All Users</span>
-        <button style="width:auto; padding:6px 12px;" onclick="fetchUsers()">🔁 Refresh</button>
-      </h3>
-      <div id="userList">Loading...</div>
+    <div id="dashboard" style="display: none">
+      <h3>🖥️ Active Sessions</h3>
+      <div id="sessions"></div>
+      <button onclick="loadSessions()">🔄 Refresh</button>
     </div>
   </div>
 
@@ -96,108 +82,59 @@
       authDomain: "iptv-log-in.firebaseapp.com",
       databaseURL: "https://iptv-log-in-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "iptv-log-in",
-      storageBucket: "iptv-log-in.appspot.com",
-      messagingSenderId: "820026131349",
-      appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
     };
     firebase.initializeApp(firebaseConfig);
-
     const auth = firebase.auth();
     const db = firebase.database();
-    const functions = firebase.app().functions('asia-southeast1');
 
-    const authSection = document.getElementById('authSection');
-    const dashboard = document.getElementById('dashboard');
-    const userList = document.getElementById('userList');
+    const loginBox = document.getElementById("loginBox");
+    const dashboard = document.getElementById("dashboard");
+    const sessionList = document.getElementById("sessions");
 
-    function adminLogin() {
-      const email = document.getElementById('adminEmail').value;
-      const pass = document.getElementById('adminPass').value;
+    function login() {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
       auth.signInWithEmailAndPassword(email, pass)
         .then(() => {
-          authSection.style.display = 'none';
-          dashboard.style.display = 'block';
-          fetchUsers();
+          loginBox.style.display = "none";
+          dashboard.style.display = "block";
+          loadSessions();
         })
         .catch(e => {
-          document.getElementById('loginError').textContent = e.message;
+          document.getElementById("loginError").textContent = e.message;
         });
     }
 
-    function createUser() {
-      const email = document.getElementById('newEmail').value;
-      const pass = document.getElementById('newPassword').value;
-      functions.httpsCallable('createUser')({ email, password: pass })
-        .then(res => {
-          document.getElementById('createStatus').textContent = `Created UID: ${res.data.uid}`;
-          fetchUsers();
-        })
-        .catch(e => {
-          document.getElementById('createStatus').textContent = e.message;
-        });
-    }
-
-    function fetchUsers() {
-      userList.innerHTML = 'Loading...';
-      functions.httpsCallable('listUsers')()
-        .then(res => {
-          userList.innerHTML = '';
-          res.data.forEach(user => {
-            const div = document.createElement('div');
-            div.className = 'user-box';
-            div.innerHTML = `
-              <span><strong>Email:</strong> ${user.email}</span>
-              <span><strong>UID:</strong> ${user.uid}</span>
-              <span><strong>Status:</strong> ${user.disabled ? '🔒 Banned' : '✅ Active'}</span>
-              <div class="actions">
-                <button onclick="banUser('${user.uid}')">🚫 Ban</button>
-                <button onclick="unbanUser('${user.uid}')">✅ Unban</button>
-              </div>
-              <div>
-                <h4>Devices:</h4>
-                <div id="sessions-${user.uid}">Loading...</div>
-              </div>
-            `;
-            userList.appendChild(div);
-            loadSessions(user.uid);
-          });
-        });
-    }
-
-    function banUser(uid) {
-      functions.httpsCallable('disableUser')({ uid }).then(fetchUsers);
-    }
-
-    function unbanUser(uid) {
-      functions.httpsCallable('enableUser')({ uid }).then(fetchUsers);
-    }
-
-    function loadSessions(uid) {
-      const ref = db.ref(`sessions/${uid}`);
-      const target = document.getElementById(`sessions-${uid}`);
-      ref.on('value', snap => {
+    function loadSessions() {
+      sessionList.innerHTML = "Loading...";
+      db.ref("sessions").once("value", snap => {
         const data = snap.val();
-        if (!data) return target.innerHTML = '<em>No active sessions</em>';
-        target.innerHTML = '';
-        Object.keys(data).forEach(deviceId => {
-          const div = document.createElement('div');
-          div.innerHTML = `
-            📱 ${deviceId}
-            <button onclick="forceLogout('${uid}', '${deviceId}')">❌ Logout</button>
-          `;
-          target.appendChild(div);
+        if (!data) return sessionList.innerHTML = "<p>No sessions found.</p>";
+
+        sessionList.innerHTML = "";
+        Object.keys(data).forEach(uid => {
+          const userDiv = document.createElement("div");
+          userDiv.className = "user-box";
+          userDiv.innerHTML = `<h4>UID: ${uid}</h4>`;
+          const devices = data[uid];
+          Object.keys(devices).forEach(deviceId => {
+            const dev = document.createElement("div");
+            dev.innerHTML = `
+              📱 <b>${deviceId}</b>
+              <button onclick="forceLogout('${uid}', '${deviceId}')">❌ Logout</button>
+            `;
+            userDiv.appendChild(dev);
+          });
+          sessionList.appendChild(userDiv);
         });
       });
     }
 
     function forceLogout(uid, deviceId) {
-      functions.httpsCallable('forceLogout')({ uid, deviceId })
-        .then(() => alert('Device has been logged out.'))
-        .catch(e => alert('Error: ' + e.message));
+      db.ref(`sessions/${uid}/${deviceId}`).remove()
+        .then(() => alert("✅ Device logged out."))
+        .catch(err => alert("Error: " + err.message));
     }
-
-    // 🔁 Auto-refresh every 10 seconds
-    setInterval(fetchUsers, 10000);
   </script>
 </body>
 </html>
