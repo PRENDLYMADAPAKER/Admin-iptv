@@ -82,8 +82,11 @@
       <button onclick="createUser()">Create Account</button>
       <p id="createStatus" style="color: lightgreen;"></p>
 
-      <h3>All Users</h3>
-      <div id="userList"></div>
+      <h3 style="display: flex; justify-content: space-between; align-items: center;">
+        <span>All Users</span>
+        <button style="width:auto; padding:6px 12px;" onclick="fetchUsers()">🔁 Refresh</button>
+      </h3>
+      <div id="userList">Loading...</div>
     </div>
   </div>
 
@@ -192,6 +195,9 @@
         .then(() => alert('Device has been logged out.'))
         .catch(e => alert('Error: ' + e.message));
     }
+
+    // 🔁 Auto-refresh every 10 seconds
+    setInterval(fetchUsers, 10000);
   </script>
 </body>
 </html>
