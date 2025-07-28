@@ -57,8 +57,6 @@
     .user-card strong {
       display: block;
     }
-
-    /* Modal */
     #editModal {
       display: none;
       position: fixed;
@@ -84,17 +82,16 @@
 <body>
   <div class="container">
     <h2>Admin User Panel</h2>
-
-    <!-- Create User Form -->
     <input id="username" placeholder="Username">
     <input id="password" type="password" placeholder="Password">
     <label>Expiration Date:</label>
     <input id="expiry" type="date">
     <label>Device Limit:</label>
     <input id="devices" type="number" value="1" min="1">
+    <label>Playlist URL:</label>
+    <input id="playlist" type="text" placeholder="https://...">
     <button id="btnCreate">Create Account</button>
 
-    <!-- User List -->
     <div class="user-list" id="userList">
       <h3>List of Users</h3>
       <div id="users"></div>
@@ -109,6 +106,8 @@
       <input id="editPassword" type="text" placeholder="Leave blank to keep old">
       <label>New Expiration Date:</label>
       <input id="editExpiry" type="date">
+      <label>New Playlist URL:</label>
+      <input id="editPlaylist" type="text" placeholder="Leave blank to keep old">
       <button onclick="submitEdit()">Save</button>
       <button onclick="closeEdit()" style="background:#ccc; color:black;">Cancel</button>
     </div>
@@ -128,18 +127,17 @@
       messagingSenderId: "464216999882",
       appId: "1:464216999882:web:d7e1f7d44adacd8b46b133"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Create User
     document.getElementById("btnCreate").onclick = () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const expiry = document.getElementById("expiry").value;
       const devices = parseInt(document.getElementById("devices").value);
+      const playlist = document.getElementById("playlist").value.trim();
 
-      if (!username || !password || !expiry || isNaN(devices)) {
+      if (!username || !password || !expiry || isNaN(devices) || !playlist) {
         alert("⚠️ Please fill in all fields.");
         return;
       }
@@ -149,7 +147,8 @@
         expiration: expiry,
         device_limit: devices,
         status: "active",
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        playlist
       };
 
       db.ref("users/" + username).set(payload).then(() => {
@@ -158,54 +157,49 @@
         document.getElementById("password").value = "";
         document.getElementById("expiry").value = "";
         document.getElementById("devices").value = "1";
+        document.getElementById("playlist").value = "";
       }).catch(err => alert("❌ Error: " + err.message));
     };
 
-    // Display Users
     const usersDiv = document.getElementById("users");
     db.ref("users").on("value", (snapshot) => {
       usersDiv.innerHTML = "";
       const now = new Date();
-
       snapshot.forEach(child => {
         const data = child.val();
         const exp = new Date(data.expiration);
         const isExpired = now > exp;
-
         const card = document.createElement("div");
         card.className = "user-card" + (isExpired ? " expired" : "");
-
         card.innerHTML = `
           <strong>${child.key}</strong>
           Password: ${data.password}<br>
           Expiration: ${data.expiration}<br>
           Devices: ${data.device_limit}<br>
+          Playlist: ${data.playlist || 'N/A'}<br>
           Status: ${isExpired ? "❌ Expired" : "✅ Active"}<br>
-          <button onclick="editUser('${child.key}', '${data.password}', '${data.expiration}')">✏️ Edit</button>
+          <button onclick="editUser('${child.key}', '${data.password}', '${data.expiration}', '${data.playlist || ''}')">✏️ Edit</button>
           <button onclick="deleteUser('${child.key}')">🗑 Delete</button>
         `;
         usersDiv.appendChild(card);
       });
     });
 
-    // Delete User
     function deleteUser(username) {
       const confirmDelete = confirm(`Are you sure you want to delete "${username}"?`);
       if (!confirmDelete) return;
-
       db.ref("users/" + username).remove()
         .then(() => alert(`🗑 User "${username}" deleted.`))
         .catch(err => alert("❌ Error: " + err.message));
     }
 
-    // Edit User
     let currentUser = "";
-
-    function editUser(username, password, expiration) {
+    function editUser(username, password, expiration, playlist) {
       currentUser = username;
       document.getElementById("editUsername").innerText = username;
       document.getElementById("editPassword").value = "";
       document.getElementById("editExpiry").value = expiration;
+      document.getElementById("editPlaylist").value = playlist || "";
       document.getElementById("editModal").style.display = "flex";
     }
 
@@ -216,6 +210,7 @@
     function submitEdit() {
       const newPass = document.getElementById("editPassword").value.trim();
       const newExpiry = document.getElementById("editExpiry").value;
+      const newPlaylist = document.getElementById("editPlaylist").value.trim();
 
       if (!newExpiry) {
         alert("⚠️ Expiration date required.");
@@ -224,6 +219,7 @@
 
       const updates = { expiration: newExpiry };
       if (newPass !== "") updates.password = newPass;
+      if (newPlaylist !== "") updates.playlist = newPlaylist;
 
       db.ref("users/" + currentUser).update(updates)
         .then(() => {
