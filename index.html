@@ -1,63 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Admin User Panel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Create User</title>
 </head>
 <body>
-  <h2>Create Account</h2>
-  <input type="text" id="username" placeholder="Username"><br><br>
-  <input type="password" id="password" placeholder="Password"><br><br>
-  <input type="number" id="expiration" placeholder="Expiration (in days)"><br><br>
-  <label><input type="radio" name="device" value="1"> 1 Device</label>
-  <label><input type="radio" name="device" value="2" checked> 2 Devices</label><br><br>
-  <button onclick="createUser()">CREATE</button>
+  <h2>Create User Account</h2>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-database.js";
+  <input id="username" placeholder="Username"><br><br>
+  <input id="password" placeholder="Password" type="password"><br><br>
+  <label>Expiry Date:</label>
+  <input id="expiry" type="date"><br><br>
+  <label>Device Limit:</label>
+  <input id="devices" type="number" value="1" min="1"><br><br>
 
-    // Replace this with your actual Firebase config
+  <button id="btn">Create</button>
+
+  <!-- Firebase compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
       databaseURL: "https://iptv-login-3204b-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "iptv-login-3204b",
-      storageBucket: "iptv-login-3204b.firebasestorage.app",
+      storageBucket: "iptv-login-3204b.appspot.com",
       messagingSenderId: "464216999882",
-      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133",
-      measurementId: "G-MLCEQM3QXD"
+      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    window.createUser = function () {
+    document.getElementById("btn").onclick = () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
-      const expirationDays = parseInt(document.getElementById("expiration").value.trim());
-      const deviceLimit = document.querySelector('input[name="device"]:checked')?.value;
+      const expiry = document.getElementById("expiry").value;
+      const devices = parseInt(document.getElementById("devices").value);
 
-      if (!username || !password || isNaN(expirationDays)) {
-        alert("⚠️ Please fill in all fields correctly.");
+      if (!username || !password || !expiry || isNaN(devices)) {
+        alert("⚠️ Please fill out all fields correctly.");
         return;
       }
 
-      const today = new Date();
-      const expirationDate = new Date(today.getTime() + expirationDays * 24 * 60 * 60 * 1000).toISOString();
-
-      set(ref(db, 'users/' + username), {
+      const payload = {
         password: password,
-        expiration: expirationDate,
-        device_limit: parseInt(deviceLimit),
-        created_at: today.toISOString(),
-        status: "active"
-      }).then(() => {
-        alert("✅ User created successfully!");
-      }).catch((error) => {
-        alert("❌ Error: " + error.message);
-        console.error("Firebase error:", error);
+        expiration: expiry,
+        device_limit: devices,
+        status: "active",
+        created_at: new Date().toISOString()
+      };
+
+      db.ref('users/' + username).set(payload).then(() => {
+        alert("✅ User '" + username + "' created successfully!");
+      }).catch(err => {
+        alert("❌ Error: " + err.message);
+        console.error(err);
       });
     };
   </script>
