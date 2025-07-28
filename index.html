@@ -23,7 +23,7 @@
       text-align: center;
       margin-bottom: 20px;
     }
-    input, select, button {
+    input, button {
       width: 100%;
       padding: 10px;
       margin: 8px 0;
@@ -57,6 +57,28 @@
     .user-card strong {
       display: block;
     }
+
+    /* Modal */
+    #editModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    #editModal .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 400px;
+    }
+    #editModal input {
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -79,12 +101,24 @@
     </div>
   </div>
 
-  <!-- Firebase -->
+  <!-- Edit Modal -->
+  <div id="editModal">
+    <div class="modal-content">
+      <h3>Edit User: <span id="editUsername" style="color:#4CAF50;"></span></h3>
+      <label>New Password:</label>
+      <input id="editPassword" type="text" placeholder="Leave blank to keep old">
+      <label>New Expiration Date:</label>
+      <input id="editExpiry" type="date">
+      <button onclick="submitEdit()">Save</button>
+      <button onclick="closeEdit()" style="background:#ccc; color:black;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
@@ -95,11 +129,10 @@
       appId: "1:464216999882:web:d7e1f7d44adacd8b46b133"
     };
 
-    // Init Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Create User Function
+    // Create User
     document.getElementById("btnCreate").onclick = () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -107,7 +140,7 @@
       const devices = parseInt(document.getElementById("devices").value);
 
       if (!username || !password || !expiry || isNaN(devices)) {
-        alert("⚠️ Please fill in all fields correctly.");
+        alert("⚠️ Please fill in all fields.");
         return;
       }
 
@@ -120,14 +153,12 @@
       };
 
       db.ref("users/" + username).set(payload).then(() => {
-        alert("✅ User created successfully!");
+        alert("✅ User created!");
         document.getElementById("username").value = "";
         document.getElementById("password").value = "";
         document.getElementById("expiry").value = "";
         document.getElementById("devices").value = "1";
-      }).catch(err => {
-        alert("❌ Firebase Error: " + err.message);
-      });
+      }).catch(err => alert("❌ Error: " + err.message));
     };
 
     // Display Users
@@ -149,11 +180,58 @@
           Password: ${data.password}<br>
           Expiration: ${data.expiration}<br>
           Devices: ${data.device_limit}<br>
-          Status: ${isExpired ? "❌ Expired" : "✅ Active"}
+          Status: ${isExpired ? "❌ Expired" : "✅ Active"}<br>
+          <button onclick="editUser('${child.key}', '${data.password}', '${data.expiration}')">✏️ Edit</button>
+          <button onclick="deleteUser('${child.key}')">🗑 Delete</button>
         `;
         usersDiv.appendChild(card);
       });
     });
+
+    // Delete User
+    function deleteUser(username) {
+      const confirmDelete = confirm(`Are you sure you want to delete "${username}"?`);
+      if (!confirmDelete) return;
+
+      db.ref("users/" + username).remove()
+        .then(() => alert(`🗑 User "${username}" deleted.`))
+        .catch(err => alert("❌ Error: " + err.message));
+    }
+
+    // Edit User
+    let currentUser = "";
+
+    function editUser(username, password, expiration) {
+      currentUser = username;
+      document.getElementById("editUsername").innerText = username;
+      document.getElementById("editPassword").value = "";
+      document.getElementById("editExpiry").value = expiration;
+      document.getElementById("editModal").style.display = "flex";
+    }
+
+    function closeEdit() {
+      document.getElementById("editModal").style.display = "none";
+    }
+
+    function submitEdit() {
+      const newPass = document.getElementById("editPassword").value.trim();
+      const newExpiry = document.getElementById("editExpiry").value;
+
+      if (!newExpiry) {
+        alert("⚠️ Expiration date required.");
+        return;
+      }
+
+      const updates = { expiration: newExpiry };
+      if (newPass !== "") updates.password = newPass;
+
+      db.ref("users/" + currentUser).update(updates)
+        .then(() => {
+          alert(`✅ "${currentUser}" updated.`);
+          closeEdit();
+        })
+        .catch(err => alert("❌ Error: " + err.message));
+    }
   </script>
 </body>
 </html>
