@@ -1,24 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Admin Panel - Create User</title>
+  <meta charset="UTF-8">
+  <title>Admin User Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .user-list {
+      margin-top: 30px;
+    }
+    .user-card {
+      background: #f9f9f9;
+      border-left: 5px solid #4CAF50;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+    .expired {
+      border-left-color: red;
+    }
+    .user-card strong {
+      display: block;
+    }
+  </style>
 </head>
 <body>
-  <h3>Create Account</h3>
+  <div class="container">
+    <h2>Admin User Panel</h2>
 
-  <input id="username" placeholder="Username"><br><br>
-  <input id="password" type="password" placeholder="Password"><br><br>
-  <input id="expiry" type="date"><br><br>
-  <input id="devices" type="number" value="1" min="1" placeholder="Device Limit"><br><br>
+    <!-- Create User Form -->
+    <input id="username" placeholder="Username">
+    <input id="password" type="password" placeholder="Password">
+    <label>Expiration Date:</label>
+    <input id="expiry" type="date">
+    <label>Device Limit:</label>
+    <input id="devices" type="number" value="1" min="1">
+    <button id="btnCreate">Create Account</button>
 
-  <button id="btn">Create</button>
+    <!-- User List -->
+    <div class="user-list" id="userList">
+      <h3>List of Users</h3>
+      <div id="users"></div>
+    </div>
+  </div>
 
-  <p id="debug" style="color: red;"></p>
-
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
@@ -29,45 +95,65 @@
       appId: "1:464216999882:web:d7e1f7d44adacd8b46b133"
     };
 
+    // Init Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    document.getElementById("btn").onclick = () => {
-      const debug = document.getElementById("debug");
+    // Create User Function
+    document.getElementById("btnCreate").onclick = () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const expiry = document.getElementById("expiry").value;
       const devices = parseInt(document.getElementById("devices").value);
 
-      // Show values directly on screen
-      debug.innerText = "USERNAME: " + username + "\nEXPIRY: " + expiry + "\nDEVICES: " + devices;
-
       if (!username || !password || !expiry || isNaN(devices)) {
-        alert("⚠️ Please fill all fields correctly.");
-        return;
-      }
-
-      if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-        alert("⚠️ Username must not contain spaces or special characters.");
+        alert("⚠️ Please fill in all fields correctly.");
         return;
       }
 
       const payload = {
-        password: password,
+        password,
         expiration: expiry,
         device_limit: devices,
         status: "active",
         created_at: new Date().toISOString()
       };
 
-      db.ref('users/' + username).set(payload).then(() => {
-        alert("✅ User '" + username + "' created!");
-        debug.innerText = ""; // clear debug
+      db.ref("users/" + username).set(payload).then(() => {
+        alert("✅ User created successfully!");
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
+        document.getElementById("expiry").value = "";
+        document.getElementById("devices").value = "1";
       }).catch(err => {
         alert("❌ Firebase Error: " + err.message);
-        debug.innerText = "Error: " + err.message;
       });
     };
+
+    // Display Users
+    const usersDiv = document.getElementById("users");
+    db.ref("users").on("value", (snapshot) => {
+      usersDiv.innerHTML = "";
+      const now = new Date();
+
+      snapshot.forEach(child => {
+        const data = child.val();
+        const exp = new Date(data.expiration);
+        const isExpired = now > exp;
+
+        const card = document.createElement("div");
+        card.className = "user-card" + (isExpired ? " expired" : "");
+
+        card.innerHTML = `
+          <strong>${child.key}</strong>
+          Password: ${data.password}<br>
+          Expiration: ${data.expiration}<br>
+          Devices: ${data.device_limit}<br>
+          Status: ${isExpired ? "❌ Expired" : "✅ Active"}
+        `;
+        usersDiv.appendChild(card);
+      });
+    });
   </script>
 </body>
 </html>
