@@ -6,87 +6,60 @@
   <title>IPTV Admin Panel</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #1e1e1e;
+      font-family: sans-serif;
+      background: #121212;
       color: #fff;
-      margin: 0;
-      padding: 20px;
+      padding: 2rem;
     }
-
     h1 {
-      text-align: center;
-      color: #00e676;
+      color: #00ffc3;
     }
-
-    form {
-      max-width: 400px;
-      margin: 30px auto;
-      background: #2c2c2c;
-      padding: 20px;
-      border-radius: 10px;
+    label {
+      display: block;
+      margin-top: 1rem;
     }
-
-    input, select {
+    input {
+      padding: 0.5rem;
+      margin-top: 0.2rem;
       width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 5px;
+      max-width: 300px;
     }
-
     button {
-      width: 100%;
-      padding: 12px;
-      background: #00e676;
-      color: black;
-      font-weight: bold;
+      margin-top: 1.5rem;
+      padding: 0.7rem 2rem;
+      background: #00ffc3;
+      color: #000;
       border: none;
-      border-radius: 5px;
       cursor: pointer;
-    }
-
-    button:hover {
-      background: #00c853;
-    }
-
-    .success, .error {
-      text-align: center;
-      margin-top: 15px;
-    }
-
-    .success {
-      color: #00e676;
-    }
-
-    .error {
-      color: #ff1744;
     }
   </style>
 </head>
 <body>
-  <h1>Admin Panel</h1>
-  <form id="accountForm">
-    <input type="text" id="username" placeholder="Username" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <input type="date" id="expiry" required />
-    <select id="deviceLimit" required>
-      <option value="">Select Device Limit</option>
-      <option value="1">1 Device</option>
-      <option value="2">2 Devices</option>
-      <option value="3">3 Devices</option>
-      <option value="4">4 Devices</option>
-    </select>
-    <button type="submit">Create Account</button>
-    <div class="success" id="successMsg"></div>
-    <div class="error" id="errorMsg"></div>
-  </form>
+  <h1>IPTV Admin Panel</h1>
 
-  <!-- Firebase SDKs -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+  <label>Username:
+    <input type="text" id="username" placeholder="Enter username" />
+  </label>
 
-    // Your Firebase config
+  <label>Password:
+    <input type="password" id="password" placeholder="Enter password" />
+  </label>
+
+  <label>Expiration Date:
+    <input type="date" id="expiry" />
+  </label>
+
+  <label>Devices Allowed:
+    <input type="number" id="devices" min="1" value="1" />
+  </label>
+
+  <button onclick="createAccount()">Create Account</button>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
       authDomain: "iptv-log-in.firebaseapp.com",
@@ -98,43 +71,37 @@
       measurementId: "G-4Y8T6J595Z"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    const form = document.getElementById('accountForm');
-    const successMsg = document.getElementById('successMsg');
-    const errorMsg = document.getElementById('errorMsg');
+    function createAccount() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const expiry = document.getElementById("expiry").value;
+      const devices = parseInt(document.getElementById("devices").value);
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const expiry = document.getElementById('expiry').value;
-      const deviceLimit = document.getElementById('deviceLimit').value;
-
-      if (!username || !password || !expiry || !deviceLimit) {
-        errorMsg.textContent = "All fields are required!";
-        successMsg.textContent = "";
+      if (!username || !password || !expiry || isNaN(devices)) {
+        alert("❌ Please fill in all fields.");
         return;
       }
 
-      set(ref(db, 'users/' + username), {
+      db.ref("users/" + username).set({
         password: password,
         expiry: expiry,
-        devicesAllowed: parseInt(deviceLimit),
+        devicesAllowed: devices,
         createdAt: new Date().toISOString()
-      })
-      .then(() => {
-        successMsg.textContent = "✅ Account created successfully!";
-        errorMsg.textContent = "";
-        form.reset();
-      })
-      .catch((error) => {
-        errorMsg.textContent = "❌ Error: " + error.message;
-        successMsg.textContent = "";
+      }, (error) => {
+        if (error) {
+          alert("❌ Failed to create account.");
+        } else {
+          alert("✅ Account created successfully!");
+          document.getElementById("username").value = '';
+          document.getElementById("password").value = '';
+          document.getElementById("expiry").value = '';
+          document.getElementById("devices").value = '1';
+        }
       });
-    });
+    }
   </script>
 </body>
 </html>
