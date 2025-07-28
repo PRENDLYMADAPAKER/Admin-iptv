@@ -1,35 +1,61 @@
 <!DOCTYPE html>
 <html>
+<head>
+  <title>Admin Panel</title>
+</head>
 <body>
-  <input id="username" placeholder="Username">
-  <input id="password" placeholder="Password">
-  <input id="expiry" type="date">
-  <input id="devices" type="number" value="1">
-  <button id="btn">Create</button>
+  <h2>Create Account</h2>
+  <input type="text" id="username" placeholder="Username"><br>
+  <input type="text" id="password" placeholder="Password"><br>
+  <input type="number" id="expiration" placeholder="Expiration (days)"><br>
+  <label><input type="radio" name="device" value="1"> 1 Device</label>
+  <label><input type="radio" name="device" value="2" checked> 2 Device</label><br>
+  <button onclick="createUser()">CREATE</button>
 
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-database.js";
 
-  <script>
+    // Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
       databaseURL: "https://iptv-login-3204b-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "iptv-login-3204b",
-      storageBucket: "iptv-login-3204b.appspot.com",
+      storageBucket: "iptv-login-3204b.firebasestorage.app",
       messagingSenderId: "464216999882",
-      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133"
+      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133",
+      measurementId: "G-MLCEQM3QXD"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-    document.getElementById("btn").onclick = () => {
-      const user = document.getElementById("username").value;
-      db.ref('users/testuser').set({test: 'hello'}).then(() => {
-        alert('✅ Pushed test to Firebase!');
-      }).catch(err => alert('❌ Error: ' + err));
-    };
+    // Function to create user
+    window.createUser = function () {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const expirationDays = parseInt(document.getElementById("expiration").value);
+      const deviceLimit = document.querySelector('input[name="device"]:checked').value;
+      
+      const today = new Date();
+      const expirationDate = new Date(today.getTime() + expirationDays * 24 * 60 * 60 * 1000).toISOString();
+
+      set(ref(db, 'users/' + username), {
+        password: password,
+        expiration: expirationDate,
+        device_limit: parseInt(deviceLimit),
+        created_at: today.toISOString(),
+        status: "active"
+      }).then(() => {
+        alert("✅ User created successfully!");
+      }).catch((error) => {
+        alert("❌ Error: " + error.message);
+      });
+    }
   </script>
 </body>
 </html>
