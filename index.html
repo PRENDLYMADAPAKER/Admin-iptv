@@ -4,18 +4,17 @@
   <title>Admin Panel - Create User</title>
 </head>
 <body>
-  <h2>Create User Account</h2>
+  <h3>Create Account</h3>
 
   <input id="username" placeholder="Username"><br><br>
-  <input id="password" placeholder="Password" type="password"><br><br>
-  <label>Expiry Date:</label>
+  <input id="password" type="password" placeholder="Password"><br><br>
   <input id="expiry" type="date"><br><br>
-  <label>Device Limit:</label>
-  <input id="devices" type="number" value="1" min="1"><br><br>
+  <input id="devices" type="number" value="1" min="1" placeholder="Device Limit"><br><br>
 
   <button id="btn">Create</button>
 
-  <!-- Firebase compat SDKs -->
+  <p id="debug" style="color: red;"></p>
+
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
@@ -34,13 +33,22 @@
     const db = firebase.database();
 
     document.getElementById("btn").onclick = () => {
+      const debug = document.getElementById("debug");
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const expiry = document.getElementById("expiry").value;
       const devices = parseInt(document.getElementById("devices").value);
 
+      // Show values directly on screen
+      debug.innerText = "USERNAME: " + username + "\nEXPIRY: " + expiry + "\nDEVICES: " + devices;
+
       if (!username || !password || !expiry || isNaN(devices)) {
-        alert("⚠️ Please fill out all fields correctly.");
+        alert("⚠️ Please fill all fields correctly.");
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+        alert("⚠️ Username must not contain spaces or special characters.");
         return;
       }
 
@@ -53,10 +61,11 @@
       };
 
       db.ref('users/' + username).set(payload).then(() => {
-        alert("✅ User '" + username + "' created successfully!");
+        alert("✅ User '" + username + "' created!");
+        debug.innerText = ""; // clear debug
       }).catch(err => {
-        alert("❌ Error: " + err.message);
-        console.error(err);
+        alert("❌ Firebase Error: " + err.message);
+        debug.innerText = "Error: " + err.message;
       });
     };
   </script>
