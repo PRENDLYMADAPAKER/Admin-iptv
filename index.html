@@ -1,24 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Admin Panel</title>
+  <meta charset="UTF-8">
+  <title>Admin User Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
   <h2>Create Account</h2>
-  <input type="text" id="username" placeholder="Username"><br>
-  <input type="text" id="password" placeholder="Password"><br>
-  <input type="number" id="expiration" placeholder="Expiration (days)"><br>
+  <input type="text" id="username" placeholder="Username"><br><br>
+  <input type="password" id="password" placeholder="Password"><br><br>
+  <input type="number" id="expiration" placeholder="Expiration (in days)"><br><br>
   <label><input type="radio" name="device" value="1"> 1 Device</label>
-  <label><input type="radio" name="device" value="2" checked> 2 Device</label><br>
+  <label><input type="radio" name="device" value="2" checked> 2 Devices</label><br><br>
   <button onclick="createUser()">CREATE</button>
 
-  <!-- Firebase SDKs -->
   <script type="module">
-    // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-database.js";
 
-    // Your Firebase config
+    // Replace this with your actual Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
@@ -30,17 +30,20 @@
       measurementId: "G-MLCEQM3QXD"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Function to create user
     window.createUser = function () {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      const expirationDays = parseInt(document.getElementById("expiration").value);
-      const deviceLimit = document.querySelector('input[name="device"]:checked').value;
-      
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const expirationDays = parseInt(document.getElementById("expiration").value.trim());
+      const deviceLimit = document.querySelector('input[name="device"]:checked')?.value;
+
+      if (!username || !password || isNaN(expirationDays)) {
+        alert("⚠️ Please fill in all fields correctly.");
+        return;
+      }
+
       const today = new Date();
       const expirationDate = new Date(today.getTime() + expirationDays * 24 * 60 * 60 * 1000).toISOString();
 
@@ -54,8 +57,9 @@
         alert("✅ User created successfully!");
       }).catch((error) => {
         alert("❌ Error: " + error.message);
+        console.error("Firebase error:", error);
       });
-    }
+    };
   </script>
 </body>
 </html>
