@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IPTV Admin Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1e1e1e;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00e676;
+    }
+
+    form {
+      max-width: 400px;
+      margin: 30px auto;
+      background: #2c2c2c;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #00e676;
+      color: black;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #00c853;
+    }
+
+    .success, .error {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .success {
+      color: #00e676;
+    }
+
+    .error {
+      color: #ff1744;
+    }
+  </style>
+</head>
+<body>
+  <h1>Admin Panel</h1>
+  <form id="accountForm">
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <input type="date" id="expiry" required />
+    <select id="deviceLimit" required>
+      <option value="">Select Device Limit</option>
+      <option value="1">1 Device</option>
+      <option value="2">2 Devices</option>
+      <option value="3">3 Devices</option>
+      <option value="4">4 Devices</option>
+    </select>
+    <button type="submit">Create Account</button>
+    <div class="success" id="successMsg"></div>
+    <div class="error" id="errorMsg"></div>
+  </form>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+      authDomain: "iptv-log-in.firebaseapp.com",
+      databaseURL: "https://iptv-log-in-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "iptv-log-in",
+      storageBucket: "iptv-log-in.appspot.com",
+      messagingSenderId: "820026131349",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c",
+      measurementId: "G-4Y8T6J595Z"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const form = document.getElementById('accountForm');
+    const successMsg = document.getElementById('successMsg');
+    const errorMsg = document.getElementById('errorMsg');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const expiry = document.getElementById('expiry').value;
+      const deviceLimit = document.getElementById('deviceLimit').value;
+
+      if (!username || !password || !expiry || !deviceLimit) {
+        errorMsg.textContent = "All fields are required!";
+        successMsg.textContent = "";
+        return;
+      }
+
+      set(ref(db, 'users/' + username), {
+        password: password,
+        expiry: expiry,
+        devicesAllowed: parseInt(deviceLimit),
+        createdAt: new Date().toISOString()
+      })
+      .then(() => {
+        successMsg.textContent = "✅ Account created successfully!";
+        errorMsg.textContent = "";
+        form.reset();
+      })
+      .catch((error) => {
+        errorMsg.textContent = "❌ Error: " + error.message;
+        successMsg.textContent = "";
+      });
+    });
+  </script>
+</body>
+</html>
