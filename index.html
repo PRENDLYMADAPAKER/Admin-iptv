@@ -1,103 +1,105 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>IPTV Admin Panel</title>
   <meta charset="UTF-8">
+  <title>IPTV Admin Panel</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #111;
-      color: #fff;
+      font-family: Arial, sans-serif;
       padding: 2rem;
-      max-width: 500px;
-      margin: auto;
+      background-color: #121212;
+      color: white;
+    }
+    label, input {
+      display: block;
+      margin-bottom: 0.5rem;
     }
     input, button {
+      padding: 0.5rem;
       width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 5px;
-      border: none;
-      font-size: 1rem;
-    }
-    input {
-      background: #222;
-      color: #fff;
+      max-width: 400px;
     }
     button {
-      background: #00c853;
+      margin-top: 1rem;
+      background-color: #1e88e5;
       color: white;
+      border: none;
       cursor: pointer;
     }
-    .message {
-      margin-top: 10px;
+    #status {
+      margin-top: 1rem;
       font-weight: bold;
     }
   </style>
 </head>
 <body>
+  <h1>📺 IPTV Admin Panel</h1>
+  <form id="accountForm">
+    <label>Username:</label>
+    <input type="text" id="username" required>
 
-<h2>📺 IPTV Admin Panel</h2>
-<input type="text" id="username" placeholder="Username">
-<input type="password" id="password" placeholder="Password">
-<input type="date" id="expiry" placeholder="Expiration Date">
-<input type="number" id="devices" placeholder="Allowed Devices (e.g. 1)">
-<button onclick="createAccount()">Create Account</button>
+    <label>Password:</label>
+    <input type="text" id="password" required>
 
-<div class="message" id="message"></div>
+    <label>Expiry Date:</label>
+    <input type="date" id="expiry" required>
 
-<!-- Firebase SDK -->
-<script type="module">
-  // Firebase core
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    <label>Allowed Devices:</label>
+    <input type="number" id="devicesAllowed" min="1" value="1" required>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
-    authDomain: "iptv-log-in.firebaseapp.com",
-    databaseURL: "https://iptv-log-in-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "iptv-log-in",
-    storageBucket: "iptv-log-in.appspot.com",
-    messagingSenderId: "820026131349",
-    appId: "1:820026131349:web:417abd6ad9057c55a92c9c"
-  };
+    <button type="submit">Create Account</button>
+    <div id="status"></div>
+  </form>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-  window.createAccount = function () {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
-    const expiry = document.getElementById('expiry').value;
-    const devices = parseInt(document.getElementById('devices').value);
-    const message = document.getElementById('message');
+    // Firebase Config (Your new project)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
+      authDomain: "iptv-login-3204b.firebaseapp.com",
+      databaseURL: "https://iptv-login-3204b-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "iptv-login-3204b",
+      storageBucket: "iptv-login-3204b.firebasestorage.app",
+      messagingSenderId: "464216999882",
+      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133",
+      measurementId: "G-MLCEQM3QXD"
+    };
 
-    if (!username || !password || !expiry || isNaN(devices)) {
-      message.textContent = '❌ Please fill in all fields.';
-      message.style.color = 'red';
-      return;
-    }
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-    const userRef = ref(db, 'users/' + username);
+    document.getElementById('accountForm').addEventListener('submit', function (e) {
+      e.preventDefault();
 
-    set(userRef, {
-      password: password,
-      expiry: expiry,
-      devicesAllowed: devices,
-      createdAt: new Date().toISOString()
-    }).then(() => {
-      message.textContent = '✅ Account created successfully!';
-      message.style.color = 'lightgreen';
-      document.getElementById('username').value = '';
-      document.getElementById('password').value = '';
-      document.getElementById('expiry').value = '';
-      document.getElementById('devices').value = '';
-    }).catch((error) => {
-      message.textContent = '❌ Error: ' + error.message;
-      message.style.color = 'red';
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const expiry = document.getElementById('expiry').value;
+      const devicesAllowed = parseInt(document.getElementById('devicesAllowed').value);
+
+      if (!username || !password || !expiry || isNaN(devicesAllowed)) {
+        document.getElementById('status').textContent = "❌ Please fill in all fields correctly.";
+        return;
+      }
+
+      const userRef = ref(db, 'users/' + username);
+
+      set(userRef, {
+        password: password,
+        expiry: expiry,
+        devicesAllowed: devicesAllowed,
+        createdAt: new Date().toISOString()
+      })
+      .then(() => {
+        document.getElementById('status').textContent = "✅ Account created successfully!";
+        document.getElementById('accountForm').reset();
+      })
+      .catch((error) => {
+        document.getElementById('status').textContent = "❌ Error: " + error.message;
+      });
     });
-  }
-</script>
-
+  </script>
 </body>
 </html>
