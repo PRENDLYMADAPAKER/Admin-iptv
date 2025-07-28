@@ -1,105 +1,35 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>IPTV Admin Panel</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-      background-color: #121212;
-      color: white;
-    }
-    label, input {
-      display: block;
-      margin-bottom: 0.5rem;
-    }
-    input, button {
-      padding: 0.5rem;
-      width: 100%;
-      max-width: 400px;
-    }
-    button {
-      margin-top: 1rem;
-      background-color: #1e88e5;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 1rem;
-      font-weight: bold;
-    }
-  </style>
-</head>
 <body>
-  <h1>📺 IPTV Admin Panel</h1>
-  <form id="accountForm">
-    <label>Username:</label>
-    <input type="text" id="username" required>
+  <input id="username" placeholder="Username">
+  <input id="password" placeholder="Password">
+  <input id="expiry" type="date">
+  <input id="devices" type="number" value="1">
+  <button id="btn">Create</button>
 
-    <label>Password:</label>
-    <input type="text" id="password" required>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
-    <label>Expiry Date:</label>
-    <input type="date" id="expiry" required>
-
-    <label>Allowed Devices:</label>
-    <input type="number" id="devicesAllowed" min="1" value="1" required>
-
-    <button type="submit">Create Account</button>
-    <div id="status"></div>
-  </form>
-
-  <!-- Firebase SDKs -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-    // Firebase Config (Your new project)
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
       databaseURL: "https://iptv-login-3204b-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "iptv-login-3204b",
-      storageBucket: "iptv-login-3204b.firebasestorage.app",
+      storageBucket: "iptv-login-3204b.appspot.com",
       messagingSenderId: "464216999882",
-      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133",
-      measurementId: "G-MLCEQM3QXD"
+      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    document.getElementById('accountForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const expiry = document.getElementById('expiry').value;
-      const devicesAllowed = parseInt(document.getElementById('devicesAllowed').value);
-
-      if (!username || !password || !expiry || isNaN(devicesAllowed)) {
-        document.getElementById('status').textContent = "❌ Please fill in all fields correctly.";
-        return;
-      }
-
-      const userRef = ref(db, 'users/' + username);
-
-      set(userRef, {
-        password: password,
-        expiry: expiry,
-        devicesAllowed: devicesAllowed,
-        createdAt: new Date().toISOString()
-      })
-      .then(() => {
-        document.getElementById('status').textContent = "✅ Account created successfully!";
-        document.getElementById('accountForm').reset();
-      })
-      .catch((error) => {
-        document.getElementById('status').textContent = "❌ Error: " + error.message;
-      });
-    });
+    document.getElementById("btn").onclick = () => {
+      const user = document.getElementById("username").value;
+      db.ref('users/testuser').set({test: 'hello'}).then(() => {
+        alert('✅ Pushed test to Firebase!');
+      }).catch(err => alert('❌ Error: ' + err));
+    };
   </script>
 </body>
 </html>
