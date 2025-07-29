@@ -145,20 +145,20 @@
         device_limit: devices,
         status: "active",
         created_at: new Date().toISOString(),
-        playlist
-        "devices":{}
+        playlist,
+        devices: {}
       };
 
       db.ref("users/" + username).set(payload)
-       .then(() => {
-        alert("✅ User created!");
-        document.getElementById("username").value = "";
-        document.getElementById("password").value = "";
-        document.getElementById("expiry").value = "";
-        document.getElementById("devices").value = "1";
-        document.getElementById("playlist").value = "";
-      })
-     .catch(err => alert("❌ Error: " + err.message));
+        .then(() => {
+          alert("✅ User created!");
+          document.getElementById("username").value = "";
+          document.getElementById("password").value = "";
+          document.getElementById("expiry").value = "";
+          document.getElementById("devices").value = "1";
+          document.getElementById("playlist").value = "";
+        })
+        .catch(err => alert("❌ Error: " + err.message));
     };
 
     const usersDiv = document.getElementById("users");
