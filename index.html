@@ -148,7 +148,8 @@
         device_limit: devices,
         status: "active",
         created_at: new Date().toISOString(),
-        playlist
+        playlist,
+        devices: {} // ← important fix for proxy to work!
       };
 
       db.ref("users/" + username).set(payload).then(() => {
