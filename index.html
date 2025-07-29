@@ -68,8 +68,6 @@
     <input id="expiry" type="date">
     <label>Device Limit:</label>
     <input id="devices" type="number" value="1" min="1">
-    <label>Playlist URL:</label>
-    <input id="playlist" type="text" placeholder="https://...">
     <button id="btnCreate">Create Account</button>
 
     <div class="user-list" id="userList">
@@ -100,9 +98,8 @@
       const password = document.getElementById("password").value.trim();
       const expiry = document.getElementById("expiry").value;
       const devices = parseInt(document.getElementById("devices").value);
-      const playlist = document.getElementById("playlist").value.trim();
 
-      if (!username || !password || !expiry || isNaN(devices) || !playlist) {
+      if (!username || !password || !expiry || isNaN(devices)) {
         alert("⚠️ Please fill in all fields.");
         return;
       }
@@ -112,8 +109,7 @@
         expiration: expiry,
         device_limit: devices,
         status: "active",
-        created_at: new Date().toISOString(),
-        playlist
+        created_at: new Date().toISOString()
       };
 
       db.ref("users/" + username).set(payload)
@@ -123,7 +119,6 @@
           document.getElementById("password").value = "";
           document.getElementById("expiry").value = "";
           document.getElementById("devices").value = "1";
-          document.getElementById("playlist").value = "";
         })
         .catch(err => alert("❌ Error: " + err.message));
     };
@@ -143,7 +138,7 @@
           Password: ${data.password}<br>
           Expiration: ${data.expiration}<br>
           Devices: ${data.device_limit}<br>
-          Playlist: ${data.playlist || 'N/A'}<br>
+          Playlist: hardcoded<br>
           Status: ${isExpired ? "❌ Expired" : "✅ Active"}<br>
         `;
         usersDiv.appendChild(card);
