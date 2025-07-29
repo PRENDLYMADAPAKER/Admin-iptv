@@ -148,18 +148,24 @@
         device_limit: devices,
         status: "active",
         created_at: new Date().toISOString(),
-        playlist,
-        devices: {} // ← important fix for proxy to work!
+        playlist
       };
 
-      db.ref("users/" + username).set(payload).then(() => {
-        alert("✅ User created!");
-        document.getElementById("username").value = "";
-        document.getElementById("password").value = "";
-        document.getElementById("expiry").value = "";
-        document.getElementById("devices").value = "1";
-        document.getElementById("playlist").value = "";
-      }).catch(err => alert("❌ Error: " + err.message));
+      // Step 1: Save the main data
+      db.ref("users/" + username).set(payload)
+        .then(() => {
+          // Step 2: Add empty devices object explicitly
+          return db.ref("users/" + username + "/devices").set({});
+        })
+        .then(() => {
+          alert("✅ User created!");
+          document.getElementById("username").value = "";
+          document.getElementById("password").value = "";
+          document.getElementById("expiry").value = "";
+          document.getElementById("devices").value = "1";
+          document.getElementById("playlist").value = "";
+        })
+        .catch(err => alert("❌ Error: " + err.message));
     };
 
     const usersDiv = document.getElementById("users");
@@ -187,11 +193,11 @@
     });
 
     function deleteUser(username) {
-      const confirmDelete = confirm(`Are you sure you want to delete "${username}"?`);
-      if (!confirmDelete) return;
-      db.ref("users/" + username).remove()
-        .then(() => alert(`🗑 User "${username}" deleted.`))
-        .catch(err => alert("❌ Error: " + err.message));
+      if (confirm(`Are you sure you want to delete "${username}"?`)) {
+        db.ref("users/" + username).remove()
+          .then(() => alert(`🗑 User "${username}" deleted.`))
+          .catch(err => alert("❌ Error: " + err.message));
+      }
     }
 
     let currentUser = "";
@@ -219,8 +225,8 @@
       }
 
       const updates = { expiration: newExpiry };
-      if (newPass !== "") updates.password = newPass;
-      if (newPlaylist !== "") updates.playlist = newPlaylist;
+      if (newPass) updates.password = newPass;
+      if (newPlaylist) updates.playlist = newPlaylist;
 
       db.ref("users/" + currentUser).update(updates)
         .then(() => {
