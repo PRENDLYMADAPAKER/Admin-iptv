@@ -57,23 +57,6 @@
     .user-card strong {
       display: block;
     }
-    #editModal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      justify-content: center;
-      align-items: center;
-      z-index: 999;
-    }
-    #editModal .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 400px;
-    }
   </style>
 </head>
 <body>
@@ -92,21 +75,6 @@
     <div class="user-list" id="userList">
       <h3>List of Users</h3>
       <div id="users"></div>
-    </div>
-  </div>
-
-  <!-- Edit Modal -->
-  <div id="editModal">
-    <div class="modal-content">
-      <h3>Edit User: <span id="editUsername" style="color:#4CAF50;"></span></h3>
-      <label>New Password:</label>
-      <input id="editPassword" type="text" placeholder="Leave blank to keep old">
-      <label>New Expiration Date:</label>
-      <input id="editExpiry" type="date">
-      <label>New Playlist URL:</label>
-      <input id="editPlaylist" type="text" placeholder="Leave blank to keep old">
-      <button onclick="submitEdit()">Save</button>
-      <button onclick="closeEdit()" style="background:#ccc; color:black;">Cancel</button>
     </div>
   </div>
 
@@ -145,8 +113,7 @@
         device_limit: devices,
         status: "active",
         created_at: new Date().toISOString(),
-        playlist,
-        devices: {}
+        playlist
       };
 
       db.ref("users/" + username).set(payload)
@@ -178,56 +145,10 @@
           Devices: ${data.device_limit}<br>
           Playlist: ${data.playlist || 'N/A'}<br>
           Status: ${isExpired ? "❌ Expired" : "✅ Active"}<br>
-          <button onclick="editUser('${child.key}', '${data.password}', '${data.expiration}', '${data.playlist || ''}')">✏️ Edit</button>
-          <button onclick="deleteUser('${child.key}')">🗑 Delete</button>
         `;
         usersDiv.appendChild(card);
       });
     });
-
-    function deleteUser(username) {
-      const confirmDelete = confirm(`Are you sure you want to delete "${username}"?`);
-      if (!confirmDelete) return;
-      db.ref("users/" + username).remove()
-        .then(() => alert(`🗑 User "${username}" deleted.`))
-        .catch(err => alert("❌ Error: " + err.message));
-    }
-
-    let currentUser = "";
-    function editUser(username, password, expiration, playlist) {
-      currentUser = username;
-      document.getElementById("editUsername").innerText = username;
-      document.getElementById("editPassword").value = "";
-      document.getElementById("editExpiry").value = expiration;
-      document.getElementById("editPlaylist").value = playlist || "";
-      document.getElementById("editModal").style.display = "flex";
-    }
-
-    function closeEdit() {
-      document.getElementById("editModal").style.display = "none";
-    }
-
-    function submitEdit() {
-      const newPass = document.getElementById("editPassword").value.trim();
-      const newExpiry = document.getElementById("editExpiry").value;
-      const newPlaylist = document.getElementById("editPlaylist").value.trim();
-
-      if (!newExpiry) {
-        alert("⚠️ Expiration date required.");
-        return;
-      }
-
-      const updates = { expiration: newExpiry };
-      if (newPass !== "") updates.password = newPass;
-      if (newPlaylist !== "") updates.playlist = newPlaylist;
-
-      db.ref("users/" + currentUser).update(updates)
-        .then(() => {
-          alert(`✅ "${currentUser}" updated.`);
-          closeEdit();
-        })
-        .catch(err => alert("❌ Error: " + err.message));
-    }
   </script>
 </body>
 </html>
