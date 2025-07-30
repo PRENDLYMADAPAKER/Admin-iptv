@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Admin User Panel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
       font-family: sans-serif;
@@ -12,7 +12,7 @@
       color: #333;
     }
     .container {
-      max-width: 600px;
+      max-width: 700px;
       margin: auto;
       background: white;
       padding: 20px;
@@ -50,7 +50,6 @@
       padding: 10px 15px;
       margin-bottom: 10px;
       border-radius: 6px;
-      position: relative;
     }
     .expired {
       border-left-color: red;
@@ -58,60 +57,37 @@
     .user-card strong {
       display: block;
     }
-    .actions {
-      margin-top: 10px;
-      display: flex;
-      gap: 10px;
-    }
     .actions button {
+      margin-top: 5px;
+      margin-right: 10px;
       padding: 6px 12px;
       font-size: 14px;
     }
-    #editModal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      justify-content: center;
-      align-items: center;
+    .actions {
+      margin-top: 8px;
     }
-    .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 400px;
+    .edit-box {
+      background: #eee;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Admin User Panel</h2>
-    <input id="username" placeholder="Username">
-    <input id="password" type="password" placeholder="Password">
+    <input id="username" placeholder="Username" />
+    <input id="password" type="password" placeholder="Password" />
     <label>Expiration Date:</label>
-    <input id="expiry" type="date">
+    <input id="expiry" type="date" />
     <label>Device Limit:</label>
-    <input id="devices" type="number" value="1" min="1">
+    <input id="devices" type="number" value="1" min="1" />
     <button id="btnCreate">Create Account</button>
 
     <div class="user-list" id="userList">
       <h3>List of Users</h3>
       <div id="users"></div>
-    </div>
-  </div>
-
-  <!-- Edit Modal -->
-  <div id="editModal">
-    <div class="modal-content">
-      <h3>Edit User</h3>
-      <input id="editPassword" type="text" placeholder="New Password">
-      <label>Expiration Date:</label>
-      <input id="editExpiry" type="date">
-      <label>Device Limit:</label>
-      <input id="editDevices" type="number" min="1">
-      <button id="saveEdit">Save</button>
     </div>
   </div>
 
@@ -132,7 +108,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Create account
     document.getElementById("btnCreate").onclick = () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -148,8 +123,8 @@
         password,
         expiration: expiry,
         device_limit: devices,
-        status: "active",
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        status: "active"
       };
 
       db.ref("users/" + username).set(payload)
@@ -163,16 +138,7 @@
         .catch(err => alert("❌ Error: " + err.message));
     };
 
-    // Render users
     const usersDiv = document.getElementById("users");
-    const editModal = document.getElementById("editModal");
-    const editPassword = document.getElementById("editPassword");
-    const editExpiry = document.getElementById("editExpiry");
-    const editDevices = document.getElementById("editDevices");
-    const saveEdit = document.getElementById("saveEdit");
-
-    let selectedUser = "";
-
     db.ref("users").on("value", async (snapshot) => {
       usersDiv.innerHTML = "";
       const now = new Date();
@@ -180,64 +146,72 @@
         const data = child.val();
         const exp = new Date(data.expiration);
         const isExpired = now > exp;
-        const devices = data.devices ? Object.keys(data.devices).length : 0;
-
         const card = document.createElement("div");
         card.className = "user-card" + (isExpired ? " expired" : "");
         card.innerHTML = `
           <strong>${child.key}</strong>
           Password: ${data.password}<br>
           Expiration: ${data.expiration}<br>
-          Devices: ${data.device_limit} (Logged in: ${devices})<br>
-          Status: ${isExpired ? "❌ Expired" : "✅ Active"}
+          Devices: ${data.device_limit}<br>
+          Online: ${data.devices ? Object.keys(data.devices).length : 0} device(s)<br>
           <div class="actions">
-            <button onclick="editUser('${child.key}', '${data.password}', '${data.expiration}', ${data.device_limit})">Edit</button>
-            <button onclick="deleteUser('${child.key}')">Delete</button>
+            <button onclick="editUser('${child.key}')">✏️ Edit</button>
+            <button onclick="deleteUser('${child.key}')">🗑️ Delete</button>
           </div>
+          <div id="edit-${child.key}" class="edit-box" style="display:none;"></div>
         `;
         usersDiv.appendChild(card);
       });
     });
 
-    // Edit
-    window.editUser = (username, password, expiration, device_limit) => {
-      selectedUser = username;
-      editPassword.value = password;
-      editExpiry.value = expiration;
-      editDevices.value = device_limit;
-      editModal.style.display = "flex";
-    };
-
-    // Save edit
-    saveEdit.onclick = () => {
-      const updates = {
-        password: editPassword.value,
-        expiration: editExpiry.value,
-        device_limit: parseInt(editDevices.value)
-      };
-      db.ref("users/" + selectedUser).update(updates)
-        .then(() => {
-          alert("✅ User updated!");
-          editModal.style.display = "none";
-        })
-        .catch(err => alert("❌ Error: " + err.message));
-    };
-
-    // Delete
-    window.deleteUser = (username) => {
+    function deleteUser(username) {
       if (confirm(`Delete user "${username}"?`)) {
         db.ref("users/" + username).remove()
-          .then(() => alert("🗑️ User deleted."))
-          .catch(err => alert("❌ Error: " + err.message));
+          .then(() => alert("✅ User deleted."))
+          .catch(err => alert("❌ " + err.message));
       }
-    };
+    }
 
-    // Close modal on outside click
-    editModal.onclick = (e) => {
-      if (e.target === editModal) {
-        editModal.style.display = "none";
+    function editUser(username) {
+      const box = document.getElementById(`edit-${username}`);
+      if (box.style.display === "none") {
+        db.ref("users/" + username).once("value").then(snapshot => {
+          const data = snapshot.val();
+          box.innerHTML = `
+            <label>New Password:</label>
+            <input type="text" id="pw-${username}" value="${data.password}" />
+            <label>New Expiration:</label>
+            <input type="date" id="exp-${username}" value="${data.expiration}" />
+            <label>New Device Limit:</label>
+            <input type="number" id="limit-${username}" value="${data.device_limit}" min="1" />
+            <button onclick="saveEdit('${username}')">💾 Save</button>
+          `;
+          box.style.display = "block";
+        });
+      } else {
+        box.style.display = "none";
       }
-    };
+    }
+
+    function saveEdit(username) {
+      const pw = document.getElementById(`pw-${username}`).value;
+      const exp = document.getElementById(`exp-${username}`).value;
+      const limit = parseInt(document.getElementById(`limit-${username}`).value);
+
+      if (!pw || !exp || isNaN(limit)) {
+        alert("❗ All fields required.");
+        return;
+      }
+
+      db.ref("users/" + username).update({
+        password: pw,
+        expiration: exp,
+        device_limit: limit
+      }).then(() => {
+        alert("✅ User updated.");
+        document.getElementById(`edit-${username}`).style.display = "none";
+      }).catch(err => alert("❌ " + err.message));
+    }
   </script>
 </body>
 </html>
