@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, select, button { margin: 5px; padding: 8px; }
+    .user-box { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>📋 Admin Panel – User Management</h2>
+
+  <label>Username:</label><br>
+  <input type="text" id="username"><br>
+
+  <label>Password:</label><br>
+  <input type="password" id="password"><br>
+
+  <label>Expiration (days from now):</label><br>
+  <input type="number" id="expiration" value="30"><br>
+
+  <label>Device Limit:</label><br>
+  <select id="devices">
+    <option value="1">1 Device</option>
+    <option value="2">2 Devices</option>
+  </select><br>
+
+  <button onclick="createUser()">✅ Create User</button>
+
+  <hr>
+
+  <h3>👥 User List</h3>
+  <div id="userList">Loading...</div>
+
+  <script>
+    // Firebase config (your info)
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0TjMoFSYBIs0VQ9shUilOuDGb1uXHjKI",
+      authDomain: "iptv-log-in.firebaseapp.com",
+      databaseURL: "https://iptv-log-in-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "iptv-log-in",
+      storageBucket: "iptv-log-in.firebasestorage.app",
+      messagingSenderId: "820026131349",
+      appId: "1:820026131349:web:417abd6ad9057c55a92c9c",
+      measurementId: "G-4Y8T6J595Z"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function createUser() {
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+      const days = parseInt(document.getElementById('expiration').value);
+      const devices = parseInt(document.getElementById('devices').value);
+
+      if (!user || !pass || isNaN(days)) {
+        alert("Fill in all fields!");
+        return;
+      }
+
+      const now = new Date();
+      now.setDate(now.getDate() + days);
+      const expires = now.toISOString().split('T')[0];
+
+      db.ref("users/" + user).set({
+        password: pass,
+        expires: expires,
+        devices: devices
+      }).then(() => {
+        alert("✅ User created!");
+        loadUsers();
+      }).catch((e) => {
+        alert("❌ Error: " + e.message);
+      });
+    }
+
+    function deleteUser(user) {
+      if (confirm("Delete user '" + user + "'?")) {
+        db.ref("users/" + user).remove().then(() => {
+          alert("🗑️ User deleted.");
+          loadUsers();
+        });
+      }
+    }
+
+    function loadUsers() {
+      db.ref("users").once("value", (snapshot) => {
+        const container = document.getElementById("userList");
+        container.innerHTML = "";
+        const users = snapshot.val();
+        if (!users) {
+          container.innerHTML = "No users found.";
+          return;
+        }
+        Object.keys(users).forEach(user => {
+          const info = users[user];
+          const div = document.createElement("div");
+          div.className = "user-box";
+          div.innerHTML = `
+            <b>👤 ${user}</b><br>
+            🔑 Password: ${info.password}<br>
+            📅 Expires: ${info.expires}<br>
+            📱 Devices: ${info.devices}<br>
+            <button onclick="deleteUser('${user}')">🗑️ Delete</button>
+          `;
+          container.appendChild(div);
+        });
+      });
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>
