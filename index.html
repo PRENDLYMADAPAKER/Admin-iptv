@@ -12,15 +12,16 @@
       color: #333;
     }
     .container {
-      max-width: 700px;
+      max-width: 600px;
       margin: auto;
       background: white;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    h2, h3 {
+    h2 {
       text-align: center;
+      margin-bottom: 20px;
     }
     input, button {
       width: 100%;
@@ -49,6 +50,7 @@
       padding: 10px 15px;
       margin-bottom: 10px;
       border-radius: 6px;
+      cursor: pointer;
     }
     .expired {
       border-left-color: red;
@@ -57,16 +59,8 @@
       display: block;
       font-size: 18px;
     }
-    .actions {
-      margin-top: 8px;
-    }
-    .actions button {
-      width: auto;
-      margin-right: 5px;
-      background-color: #ff9800;
-    }
-    .actions .delete-btn {
-      background-color: crimson;
+    .editing {
+      background: #e0ffe0;
     }
   </style>
 </head>
@@ -79,9 +73,10 @@
     <input id="expiry" type="date">
     <label>Device Limit:</label>
     <input id="devices" type="number" value="1" min="1">
-    <button id="btnCreate">Create Account</button>
+    <button id="btnCreate">Create/Update Account</button>
+    <input type="hidden" id="editMode" value="false">
 
-    <div class="user-list">
+    <div class="user-list" id="userList">
       <h3>List of Users</h3>
       <div id="users"></div>
     </div>
@@ -104,13 +99,14 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const playlistUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
+    const btn = document.getElementById("btnCreate");
 
-    document.getElementById("btnCreate").onclick = () => {
+    btn.onclick = () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const expiry = document.getElementById("expiry").value;
       const devices = parseInt(document.getElementById("devices").value);
+      const isEdit = document.getElementById("editMode").value === "true";
 
       if (!username || !password || !expiry || isNaN(devices)) {
         alert("⚠️ Please fill in all fields.");
@@ -121,23 +117,30 @@
         password,
         expiration: expiry,
         device_limit: devices,
-        playlist: playlistUrl,
-        status: "active",
-        created_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
       };
 
-      db.ref("users/" + username).set(payload)
+      if (!isEdit) payload.created_at = new Date().toISOString();
+
+      db.ref("users/" + username).update(payload)
         .then(() => {
-          alert("✅ User created!");
-          document.getElementById("username").value = "";
-          document.getElementById("password").value = "";
-          document.getElementById("expiry").value = "";
-          document.getElementById("devices").value = "1";
+          alert(isEdit ? "✅ User updated!" : "✅ User created!");
+          clearForm();
         })
         .catch(err => alert("❌ Error: " + err.message));
     };
 
+    function clearForm() {
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("expiry").value = "";
+      document.getElementById("devices").value = "1";
+      document.getElementById("editMode").value = "false";
+      document.querySelectorAll('.user-card').forEach(e => e.classList.remove('editing'));
+    }
+
     const usersDiv = document.getElementById("users");
+
     db.ref("users").on("value", (snapshot) => {
       usersDiv.innerHTML = "";
       const now = new Date();
@@ -145,6 +148,7 @@
         const data = child.val();
         const exp = new Date(data.expiration);
         const isExpired = now > exp;
+        const deviceCount = data.devices ? Object.keys(data.devices).length : 0;
 
         const card = document.createElement("div");
         card.className = "user-card" + (isExpired ? " expired" : "");
@@ -152,42 +156,21 @@
           <strong>${child.key}</strong>
           Password: ${data.password}<br>
           Expiration: ${data.expiration}<br>
-          Devices: ${data.device_limit}<br>
-          Playlist: hardcoded<br>
-          Status: ${isExpired ? "❌ Expired" : "✅ Active"}<br>
-          <span id="devCount-${child.key}">Logged in: ...</span>
-          <div class="actions">
-            <button onclick="editUser('${child.key}')">Edit</button>
-            <button class="delete-btn" onclick="deleteUser('${child.key}')">Delete</button>
-          </div>
+          Devices: ${data.device_limit} (Logged in: ${deviceCount})<br>
+          Status: ${isExpired ? "❌ Expired" : "✅ Active"}
         `;
-
+        card.onclick = () => {
+          document.getElementById("username").value = child.key;
+          document.getElementById("password").value = data.password;
+          document.getElementById("expiry").value = data.expiration;
+          document.getElementById("devices").value = data.device_limit;
+          document.getElementById("editMode").value = "true";
+          clearForm();
+          card.classList.add("editing");
+        };
         usersDiv.appendChild(card);
-
-        // Realtime count of devices logged in
-        db.ref(`users/${child.key}/devices`).on("value", snap => {
-          const count = snap.exists() ? Object.keys(snap.val()).length : 0;
-          document.getElementById(`devCount-${child.key}`).textContent = `Logged in: ${count} device(s)`;
-        });
       });
     });
-
-    function deleteUser(username) {
-      if (confirm(`Delete user ${username}?`)) {
-        db.ref("users/" + username).remove();
-      }
-    }
-
-    function editUser(username) {
-      db.ref("users/" + username).once("value").then(snapshot => {
-        const data = snapshot.val();
-        document.getElementById("username").value = username;
-        document.getElementById("password").value = data.password;
-        document.getElementById("expiry").value = data.expiration;
-        document.getElementById("devices").value = data.device_limit;
-        alert("Edit the fields above then click 'Create Account' to overwrite.");
-      });
-    }
   </script>
 </body>
 </html>
