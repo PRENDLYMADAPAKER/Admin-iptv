@@ -12,16 +12,15 @@
       color: #333;
     }
     .container {
-      max-width: 600px;
+      max-width: 700px;
       margin: auto;
       background: white;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    h2 {
+    h2, h3 {
       text-align: center;
-      margin-bottom: 20px;
     }
     input, button {
       width: 100%;
@@ -56,6 +55,18 @@
     }
     .user-card strong {
       display: block;
+      font-size: 18px;
+    }
+    .actions {
+      margin-top: 8px;
+    }
+    .actions button {
+      width: auto;
+      margin-right: 5px;
+      background-color: #ff9800;
+    }
+    .actions .delete-btn {
+      background-color: crimson;
     }
   </style>
 </head>
@@ -70,7 +81,7 @@
     <input id="devices" type="number" value="1" min="1">
     <button id="btnCreate">Create Account</button>
 
-    <div class="user-list" id="userList">
+    <div class="user-list">
       <h3>List of Users</h3>
       <div id="users"></div>
     </div>
@@ -93,6 +104,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    const playlistUrl = "https://raw.githubusercontent.com/PRENDLYMADAPAKER/ANG-KALAT-MO/main/IPTVPREMIUM.m3u";
+
     document.getElementById("btnCreate").onclick = () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -108,6 +121,7 @@
         password,
         expiration: expiry,
         device_limit: devices,
+        playlist: playlistUrl,
         status: "active",
         created_at: new Date().toISOString()
       };
@@ -131,6 +145,7 @@
         const data = child.val();
         const exp = new Date(data.expiration);
         const isExpired = now > exp;
+
         const card = document.createElement("div");
         card.className = "user-card" + (isExpired ? " expired" : "");
         card.innerHTML = `
@@ -140,10 +155,39 @@
           Devices: ${data.device_limit}<br>
           Playlist: hardcoded<br>
           Status: ${isExpired ? "❌ Expired" : "✅ Active"}<br>
+          <span id="devCount-${child.key}">Logged in: ...</span>
+          <div class="actions">
+            <button onclick="editUser('${child.key}')">Edit</button>
+            <button class="delete-btn" onclick="deleteUser('${child.key}')">Delete</button>
+          </div>
         `;
+
         usersDiv.appendChild(card);
+
+        // Realtime count of devices logged in
+        db.ref(`users/${child.key}/devices`).on("value", snap => {
+          const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+          document.getElementById(`devCount-${child.key}`).textContent = `Logged in: ${count} device(s)`;
+        });
       });
     });
+
+    function deleteUser(username) {
+      if (confirm(`Delete user ${username}?`)) {
+        db.ref("users/" + username).remove();
+      }
+    }
+
+    function editUser(username) {
+      db.ref("users/" + username).once("value").then(snapshot => {
+        const data = snapshot.val();
+        document.getElementById("username").value = username;
+        document.getElementById("password").value = data.password;
+        document.getElementById("expiry").value = data.expiration;
+        document.getElementById("devices").value = data.device_limit;
+        alert("Edit the fields above then click 'Create Account' to overwrite.");
+      });
+    }
   </script>
 </body>
 </html>
