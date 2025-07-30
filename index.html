@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin User Panel</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -13,7 +11,7 @@
       color: white;
       padding: 20px;
     }
-    input, button, select {
+    input, button {
       margin: 5px;
       padding: 8px;
       border-radius: 5px;
@@ -51,22 +49,29 @@
   <h3>List of Users</h3>
   <div id="users"></div>
 
-  <script>
-    // Firebase config (palitan mo ito ng sarili mong config)
+  <script type="module">
+    // ✅ Firebase Modular SDK imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set, update, remove, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    // 🔐 Your Firebase config
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
+      authDomain: "iptv-login-3204b.firebaseapp.com",
+      databaseURL: "https://iptv-login-3204b-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "iptv-login-3204b",
+      storageBucket: "iptv-login-3204b.firebasestorage.app",
+      messagingSenderId: "464216999882",
+      appId: "1:464216999882:web:d7e1f7d44adacd8b46b133",
+      measurementId: "G-MLCEQM3QXD"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    // 🔧 Initialize Firebase app
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-    function createUser() {
+    // ➕ Create user
+    window.createUser = function () {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const expiry = document.getElementById('expiry').value;
@@ -77,7 +82,7 @@
         return;
       }
 
-      db.ref('users/' + username).set({
+      set(ref(db, 'users/' + username), {
         password,
         expiry,
         devices
@@ -89,15 +94,20 @@
       });
     }
 
-    function loadUsers() {
-      db.ref('users').once('value', snapshot => {
+    // 📋 Load users
+    window.loadUsers = function () {
+      get(ref(db, 'users')).then(snapshot => {
         const users = snapshot.val();
         const container = document.getElementById('users');
         container.innerHTML = '';
 
         if (!users) return container.innerHTML = '<i>No users found.</i>';
 
-        Object.keys(users).forEach(username => {
+        const sortedUsers = Object.keys(users).sort((a, b) => {
+          return new Date(users[a].expiry) - new Date(users[b].expiry);
+        });
+
+        sortedUsers.forEach(username => {
           const user = users[username];
           const isExpired = new Date(user.expiry) < new Date();
           const div = document.createElement('div');
@@ -107,7 +117,8 @@
             Expiry: ${user.expiry} ${isExpired ? '(expired)' : ''}<br>
             Devices: ${user.devices}<br>
             <input id="pw-${username}" placeholder="New password">
-            <input id="ex-${username}" type="date">
+            <input id="ex-${username}" type="date" value="${user.expiry}">
+            <input id="dev-${username}" type="number" min="1" placeholder="Device Limit" value="${user.devices}">
             <button onclick="saveEdit('${username}')">Save</button>
             <button onclick="deleteUser('${username}')">Delete</button>
           `;
@@ -116,30 +127,35 @@
       });
     }
 
-    function saveEdit(username) {
+    // ✏️ Save edit
+    window.saveEdit = function (username) {
       const newPw = document.getElementById('pw-' + username).value;
       const newEx = document.getElementById('ex-' + username).value;
+      const newDev = document.getElementById('dev-' + username).value;
 
       const updates = {};
       if (newPw) updates.password = newPw;
       if (newEx) updates.expiry = newEx;
+      if (newDev) updates.devices = parseInt(newDev);
 
       if (Object.keys(updates).length === 0) return alert('No changes to save.');
 
-      db.ref('users/' + username).update(updates).then(() => {
+      update(ref(db, 'users/' + username), updates).then(() => {
         alert('User updated.');
         loadUsers();
       });
     }
 
-    function deleteUser(username) {
+    // ❌ Delete user
+    window.deleteUser = function (username) {
       if (!confirm('Delete user ' + username + '?')) return;
-      db.ref('users/' + username).remove().then(() => {
+      remove(ref(db, 'users/' + username)).then(() => {
         alert('User deleted.');
         loadUsers();
       });
     }
 
+    // 🚀 Initial load
     loadUsers();
   </script>
 </body>
