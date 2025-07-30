@@ -11,26 +11,44 @@
       color: white;
       padding: 20px;
     }
+
     input, button {
-      margin: 5px;
+      margin: 5px 0;
       padding: 8px;
       border-radius: 5px;
       border: none;
       font-size: 1em;
+      width: 100%;
+      box-sizing: border-box;
     }
+
+    label {
+      margin-top: 10px;
+      margin-bottom: 3px;
+      font-weight: bold;
+      display: block;
+    }
+
     button {
       background: #ff2a6d;
       color: white;
       cursor: pointer;
     }
+
     .user-card {
       background: #222;
       padding: 10px;
       margin: 10px 0;
       border-radius: 10px;
     }
+
     .user-card.expired {
       background: #5a2c2c;
+    }
+
+    .form-container {
+      max-width: 400px;
+      margin-bottom: 30px;
     }
   </style>
 </head>
@@ -38,13 +56,21 @@
 
   <h2>Admin User Panel</h2>
 
-  <input id="username" placeholder="Username">
-  <input id="password" type="password" placeholder="Password">
-  <label>Expiration:</label>
-  <input id="expiry" type="date">
-  <label>Device Limit:</label>
-  <input id="devices" type="number" min="1" value="1">
-  <button id="createBtn">Create Account</button>
+  <div class="form-container">
+    <label>Username:</label>
+    <input id="username" placeholder="Username">
+
+    <label>Password:</label>
+    <input id="password" type="password" placeholder="Password">
+
+    <label>Expiration:</label>
+    <input id="expiry" type="date">
+
+    <label>Device Limit:</label>
+    <input id="devices" type="number" min="1" value="1">
+
+    <button id="createBtn">Create Account</button>
+  </div>
 
   <h3>List of Users</h3>
   <div id="users"></div>
@@ -93,6 +119,8 @@
         alert('User created!');
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
+        document.getElementById('expiry').value = '';
+        document.getElementById('devices').value = 1;
         loadUsers();
       });
     }
@@ -160,10 +188,7 @@
       });
     }
 
-    // 🔄 Load on start
     loadUsers();
-
-    // ✅ Bind Create Account button
     document.getElementById('createBtn').addEventListener('click', createUser);
   </script>
 </body>
