@@ -50,11 +50,11 @@
   <div id="users"></div>
 
   <script type="module">
-    // ✅ Firebase Modular SDK imports
+    // ✅ Firebase Modular SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, set, update, remove, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // 🔐 Your Firebase config
+    // 🔐 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
@@ -66,7 +66,6 @@
       measurementId: "G-MLCEQM3QXD"
     };
 
-    // 🔧 Initialize Firebase app
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
@@ -82,11 +81,18 @@
         return;
       }
 
-      set(ref(db, 'users/' + username), {
-        password,
-        expiry,
-        devices
-      }).then(() => {
+      const userData = {
+        created_at: new Date().toISOString(),
+        device_limit: devices,
+        devices: {
+          expiration: expiry,
+          password: password,
+          playlist: "",
+          status: "active"
+        }
+      };
+
+      set(ref(db, 'users/' + username), userData).then(() => {
         alert('User created!');
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
@@ -104,21 +110,27 @@
         if (!users) return container.innerHTML = '<i>No users found.</i>';
 
         const sortedUsers = Object.keys(users).sort((a, b) => {
-          return new Date(users[a].expiry) - new Date(users[b].expiry);
+          const aDate = users[a]?.devices?.expiration || '';
+          const bDate = users[b]?.devices?.expiration || '';
+          return new Date(aDate) - new Date(bDate);
         });
 
         sortedUsers.forEach(username => {
           const user = users[username];
-          const isExpired = new Date(user.expiry) < new Date();
+          const expiryStr = user.devices?.expiration || '';
+          const devicesVal = user.device_limit || '';
+          const password = user.devices?.password || '';
+          const isExpired = expiryStr ? new Date(expiryStr) < new Date() : false;
+
           const div = document.createElement('div');
           div.className = 'user-card' + (isExpired ? ' expired' : '');
           div.innerHTML = `
             <b>${username}</b><br>
-            Expiry: ${user.expiry} ${isExpired ? '(expired)' : ''}<br>
-            Devices: ${user.devices}<br>
-            <input id="pw-${username}" placeholder="New password">
-            <input id="ex-${username}" type="date" value="${user.expiry}">
-            <input id="dev-${username}" type="number" min="1" placeholder="Device Limit" value="${user.devices}">
+            Expiry: ${expiryStr || 'N/A'} ${isExpired ? '(expired)' : ''}<br>
+            Devices: ${devicesVal || 'N/A'}<br>
+            <input id="pw-${username}" placeholder="New password" value="${password}">
+            <input id="ex-${username}" type="date" value="${expiryStr}">
+            <input id="dev-${username}" type="number" min="1" placeholder="Device Limit" value="${devicesVal}">
             <button onclick="saveEdit('${username}')">Save</button>
             <button onclick="deleteUser('${username}')">Delete</button>
           `;
@@ -127,18 +139,17 @@
       });
     }
 
-    // ✏️ Save edit
+    // ✏️ Save edits
     window.saveEdit = function (username) {
       const newPw = document.getElementById('pw-' + username).value;
       const newEx = document.getElementById('ex-' + username).value;
-      const newDev = document.getElementById('dev-' + username).value;
+      const newDev = parseInt(document.getElementById('dev-' + username).value);
 
-      const updates = {};
-      if (newPw) updates.password = newPw;
-      if (newEx) updates.expiry = newEx;
-      if (newDev) updates.devices = parseInt(newDev);
-
-      if (Object.keys(updates).length === 0) return alert('No changes to save.');
+      const updates = {
+        device_limit: newDev,
+        [`devices/password`]: newPw,
+        [`devices/expiration`]: newEx
+      };
 
       update(ref(db, 'users/' + username), updates).then(() => {
         alert('User updated.');
@@ -155,7 +166,7 @@
       });
     }
 
-    // 🚀 Initial load
+    // 🔄 Load on startup
     loadUsers();
   </script>
 </body>
