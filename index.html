@@ -44,17 +44,15 @@
   <input id="expiry" type="date">
   <label>Device Limit:</label>
   <input id="devices" type="number" min="1" value="1">
-  <button onclick="createUser()">Create Account</button>
+  <button id="createBtn">Create Account</button>
 
   <h3>List of Users</h3>
   <div id="users"></div>
 
   <script type="module">
-    // ✅ Firebase Modular SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, set, update, remove, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // 🔐 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDssixgarRWvLMKtUsX7HLEt8uPGmNIRak",
       authDomain: "iptv-login-3204b.firebaseapp.com",
@@ -69,8 +67,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // ➕ Create user
-    window.createUser = function () {
+    function createUser() {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const expiry = document.getElementById('expiry').value;
@@ -100,8 +97,7 @@
       });
     }
 
-    // 📋 Load users
-    window.loadUsers = function () {
+    function loadUsers() {
       get(ref(db, 'users')).then(snapshot => {
         const users = snapshot.val();
         const container = document.getElementById('users');
@@ -139,7 +135,6 @@
       });
     }
 
-    // ✏️ Save edits
     window.saveEdit = function (username) {
       const newPw = document.getElementById('pw-' + username).value;
       const newEx = document.getElementById('ex-' + username).value;
@@ -157,7 +152,6 @@
       });
     }
 
-    // ❌ Delete user
     window.deleteUser = function (username) {
       if (!confirm('Delete user ' + username + '?')) return;
       remove(ref(db, 'users/' + username)).then(() => {
@@ -166,8 +160,11 @@
       });
     }
 
-    // 🔄 Load on startup
+    // 🔄 Load on start
     loadUsers();
+
+    // ✅ Bind Create Account button
+    document.getElementById('createBtn').addEventListener('click', createUser);
   </script>
 </body>
 </html>
